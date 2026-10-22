@@ -1,0 +1,80 @@
+name: fleet
+
+# The engine in fleet mode: every project in fleet/ gets its modules run and its dashboard and incidents
+# published to its own tracker, with the eself-maintenance app token scoped to that one repository.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "One fleet entry (file stem); empty runs the whole fleet"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.list.outputs.projects }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+      - name: Projects to run
+        id: list
+        env:
+          ONLY: ${{ inputs.project }}
+        run: |
+          if [ -n "$ONLY" ]; then
+            test -f "fleet/$ONLY.toml"
+            echo "projects=[\"$ONLY\"]" >> "$GITHUB_OUTPUT"
+          else
+            echo "projects=$(uv run --frozen esteward fleet)" >> "$GITHUB_OUTPUT"
+          fi
+
+  run:
+    name: ${{ matrix.project }}
+    needs: plan
+    if: needs.plan.outputs.projects != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.plan.outputs.projects) }}
+    concurrency:
+      group: fleet-${{ matrix.project }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+        id: app
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.project }}
+          permission-contents: read
+          permission-issues: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4  # v10.1.0
+      - name: Run and publish
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          ESTEWARD_ENV: prod
+          PROJECT: ${{ matrix.project }}
+        run: uv run --frozen esteward run "$PROJECT" --publish --report-dir reports
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        if: always()
+        with:
+          name: reports-${{ matrix.project }}
+          path: reports/
+          if-no-files-found: ignore

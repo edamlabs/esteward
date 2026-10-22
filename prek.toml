@@ -1,0 +1,29 @@
+##### HOOKS #####
+[[repos]]
+repo = "local"
+hooks = [
+    { id = "ruff", name = "ruff check", entry = "uv run --no-sync ruff check --fix --exit-non-zero-on-fix --force-exclude", language = "system", types_or = ["python", "pyi"] },
+    { id = "ruff-format", name = "ruff format", entry = "uv run --no-sync ruff format --force-exclude", language = "system", types_or = ["python", "pyi"] },
+    { id = "ty", name = "ty type check", entry = "uv run --no-sync ty check", language = "system", types = ["python"], pass_filenames = false },
+    { id = "tach", name = "tach architecture check", entry = "uv run --no-sync tach check", language = "system", pass_filenames = false },
+    { id = "validate-pyproject", name = "validate pyproject", entry = "uv run --no-sync validate-pyproject pyproject.toml", language = "system", files = '^pyproject\.toml$', pass_filenames = false },
+    { id = "zizmor", name = "workflow hardening scan", entry = "uv run --no-sync zizmor --persona=regular .github/workflows", language = "system", files = '^\.github/workflows/.*\.ya?ml$', pass_filenames = false },
+    { id = "pytest", name = "unit suite (100 % coverage)", entry = "uv run --no-sync pytest --cov -q", language = "system", pass_filenames = false, stages = ["pre-push"] },
+]
+
+[[repos]]
+repo = "builtin"
+hooks = [
+    { id = "check-toml" },
+    { id = "check-yaml" },
+    { id = "end-of-file-fixer" },
+    { id = "trailing-whitespace" },
+    { id = "check-merge-conflict" },
+]
+
+[[repos]]
+repo = "https://github.com/gitleaks/gitleaks"
+rev = "v8.30.1"
+hooks = [
+    { id = "gitleaks" },
+]

@@ -1,0 +1,45 @@
+# Maintenance contract of edamlabs/etrafilatura.
+repo = "edamlabs/etrafilatura"
+kind = "lib"
+modules = ["deps", "security"]
+
+[deps]
+release_age_days = 540
+push_age_days = 365
+lockfiles = ["uv.lock", "Cargo.lock"]
+
+[[deps.watch]]
+name = "trafilatura-rs"
+repo = "https://github.com/nchapman/trafilatura-rs"
+registry = "https://crates.io/crates/trafilatura"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "trafilatura"
+repo = "https://github.com/adbar/trafilatura"
+registry = "https://pypi.org/project/trafilatura/"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "pyo3"
+repo = "https://github.com/PyO3/pyo3"
+registry = "https://crates.io/crates/pyo3"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "lxml"
+repo = "https://github.com/lxml/lxml"
+registry = "https://pypi.org/project/lxml/"
+license = "BSD-3-Clause"
+
+[[deps.watch]]
+name = "urllib3"
+repo = "https://github.com/urllib3/urllib3"
+registry = "https://pypi.org/project/urllib3/"
+license = "MIT"
+
+[[deps.watch]]
+name = "charset-normalizer"
+repo = "https://github.com/jawah/charset_normalizer"
+registry = "https://pypi.org/project/charset-normalizer/"
+license = "MIT"

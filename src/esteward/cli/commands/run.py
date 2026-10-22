@@ -1,0 +1,99 @@
+"""`esteward run <project>`: run the project's modules, show the verdicts, optionally publish them."""
+
+import asyncio
+from collections import deque
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
+from pathlib import Path
+from types import MappingProxyType
+from typing import Final, Protocol
+
+import msgspec
+import structlog
+from rich.console import Console
+from rich.table import Table
+
+from esteward.core.lifespan import RuntimeLifespan, lifespan
+from esteward.core.settings import settings as st
+from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDashboard
+from esteward.logic.modules.deps import DepsModule
+from esteward.logic.modules.security import SecurityModule
+from esteward.models.fleet import Fleet, ModuleFleet
+from esteward.models.issue import OperationIssue
+from esteward.models.report import Report
+
+log = structlog.get_logger()
+
+
+class RunnerModule(Protocol):
+    """Any module: a fleet entry in, a report out."""
+
+    async def run(self, fleet: Fleet) -> Report: ...
+
+
+MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], RunnerModule]]] = MappingProxyType(
+    {
+        ModuleFleet.DEPS: lambda rt, now: DepsModule(rt.github, rt.registries, rt.advisories, now, st.concurrency),
+        ModuleFleet.SECURITY: lambda rt, now: SecurityModule(rt.github, now, st.concurrency),
+    }
+)
+
+
+def _run_table(reports: tuple[Report, ...]) -> Table:
+    """The verdicts as a terminal table, most severe first."""
+    table = Table("module", "verdict", "subject", "check", "detail", title=reports[0].repo if reports else None)
+    rows = sorted(((r.module, f) for r in reports for f in r.findings), key=lambda row: (-row[1].verdict.rank, row[0]))
+    deque((table.add_row(module, str(f.verdict), f.subject, f.check, f.detail) for module, f in rows), maxlen=0)
+    return table
+
+
+async def _run_modules(
+    fleet: Fleet, modules: tuple[ModuleFleet, ...], *, publish: bool
+) -> tuple[tuple[Report, ...], tuple[OperationIssue, ...]]:
+    """Every selected module concurrently, then the tracker operations they call for, applied when publishing."""
+    now = datetime.now(UTC)
+    async with lifespan(st) as rt:
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(MODULES[module](rt, now).run(fleet)) for module in modules]
+        reports = tuple(task.result() for task in tasks)
+        dashboard, escalations = await asyncio.gather(
+            rt.github.issues(fleet.repo, DASHBOARD_LABEL), rt.github.issues(fleet.repo, ESCALATION_LABEL)
+        )
+        operations = StatusDashboard().plan(reports, dashboard, escalations)
+        await asyncio.gather(*(rt.github.apply(fleet.repo, operation) for operation in (operations if publish else ())))
+    return reports, operations
+
+
+def _run_write(report_dir: Path | None, reports: tuple[Report, ...]) -> None:
+    """One `<module>.json` per report in `report_dir`, when one is given."""
+    match report_dir:
+        case None:
+            return
+        case directory:
+            directory.mkdir(parents=True, exist_ok=True)
+            deque(((directory / f"{r.module}.json").write_bytes(msgspec.json.encode(r)) for r in reports), maxlen=0)
+
+
+def run(
+    project: str,
+    *,
+    module: tuple[ModuleFleet, ...] = (),
+    publish: bool = False,
+    report_dir: Path | None = None,
+) -> None:
+    """Run the enabled modules of `fleet/<project>.toml`.
+
+    Args:
+        project: Fleet entry name (the TOML file stem).
+        module: Restrict the run to these modules; default: every module the entry enables.
+        publish: Apply the dashboard and escalation operations to the project's tracker.
+        report_dir: Write one `<module>.json` report per module there.
+    """
+    fleet = Fleet.load(st.fleet_dir / f"{project}.toml")
+    selected = tuple(m for m in fleet.modules if not module or m in module)
+    reports, operations = asyncio.run(_run_modules(fleet, selected, publish=publish))
+    _run_write(report_dir, reports)
+    Console().print(_run_table(reports))
+    log.info(
+        "run_done", repo=fleet.repo, modules=[str(m) for m in selected], operations=len(operations), published=publish
+    )

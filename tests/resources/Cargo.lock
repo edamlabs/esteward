@@ -1,0 +1,15 @@
+version = 4
+
+[[package]]
+name = "native"
+version = "0.1.0"
+
+[[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "forked"
+version = "1.0.0"
+source = "git+https://github.com/owner/forked#abc"

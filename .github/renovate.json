@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "enabledManagers": ["pep621", "github-actions"],
+  "schedule": ["before 6am on monday"],
+  "timezone": "Europe/Madrid",
+  "prConcurrentLimit": 3,
+  "abandonmentThreshold": "1 year",
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 6am on the first day of the month"] },
+  "packageRules": [
+    {
+      "description": "requires-python is a support promise, not a dependency: never bumped by a bot.",
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
+      "description": "Python dependencies: one weekly PR.",
+      "matchManagers": ["pep621"],
+      "groupName": "python",
+      "labels": ["tooling"]
+    },
+    {
+      "description": "Workflow actions stay pinned by digest; one monthly PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true,
+      "schedule": ["before 6am on the first day of the month"],
+      "labels": ["tooling"]
+    }
+  ]
+}

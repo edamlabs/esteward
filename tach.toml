@@ -1,0 +1,33 @@
+# Import contracts: dependencies point inward. models ← logic ← (adapters, core) ← cli.
+source_roots = ["src"]
+exclude = ["tests"]
+forbid_circular_dependencies = true
+exact = true
+root_module = "forbid"
+
+[rules]
+unused_ignore_directives = "error"
+
+[[modules]]
+path = "esteward"
+depends_on = ["esteward.cli"]
+
+[[modules]]
+path = "esteward.models"
+depends_on = []
+
+[[modules]]
+path = "esteward.logic"
+depends_on = ["esteward.models"]
+
+[[modules]]
+path = "esteward.adapters"
+depends_on = ["esteward.models"]
+
+[[modules]]
+path = "esteward.core"
+depends_on = ["esteward.adapters", "esteward.logic"]
+
+[[modules]]
+path = "esteward.cli"
+depends_on = ["esteward.core", "esteward.logic", "esteward.models"]

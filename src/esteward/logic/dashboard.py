@@ -52,21 +52,29 @@ class StatusDashboard:
     def _plan_title(finding: FindingReport) -> str:
         return f"esteward · {finding.subject}: {finding.check}"
 
+    @staticmethod
+    def _plan_duplicates(duplicates: Iterable[Issue], kept: Issue) -> tuple[OperationIssue, ...]:
+        """Close every duplicate of a kept issue: the system converges even after a double creation."""
+        return tuple(CloseIssue(issue.number, f"esteward: duplicate of #{kept.number}.") for issue in duplicates)
+
     def _plan_dashboard(self, reports: Iterable[Report], current: tuple[Issue, ...]) -> tuple[OperationIssue, ...]:
-        """Rewrite the status issue, or open it on the first run."""
+        """Rewrite the status issue (the oldest one, duplicates closed), or open it on the first run."""
         body = self.render(reports)
-        match current:
-            case ():
-                return (CreateIssue(TITLE, body, (DASHBOARD_LABEL,)),)
-            case (issue, *_) if issue.body != body:
-                return (UpdateIssue(issue.number, TITLE, body),)
+        match sorted(current, key=lambda issue: issue.number):
+            case [kept, *duplicates]:
+                rewrite = (UpdateIssue(kept.number, TITLE, body),) if kept.body != body else ()
+                return rewrite + self._plan_duplicates(duplicates, kept)
             case _:
-                return ()
+                return (CreateIssue(TITLE, body, (DASHBOARD_LABEL,)),)
 
     def _plan_escalations(self, reports: tuple[Report, ...], current: tuple[Issue, ...]) -> tuple[OperationIssue, ...]:
-        """Open new incidents, refresh lasting ones, close the ones that cleared in the modules that ran."""
+        """Open new incidents, refresh lasting ones, close cleared ones and duplicates of any incident."""
         wanted = {f.key: f for r in reports for f in r.findings if f.verdict is Verdict.ESCALATE}
-        existing = {match[1]: issue for issue in current if (match := KEY.search(issue.body))}
+        marked = sorted(
+            ((match[1], issue) for issue in current if (match := KEY.search(issue.body))),
+            key=lambda pair: pair[1].number,
+        )
+        existing = dict(reversed(marked))
         ran = {r.module for r in reports}
         opened = tuple(
             CreateIssue(self._plan_title(f), self._plan_body(f), (ESCALATION_LABEL,))
@@ -83,7 +91,13 @@ class StatusDashboard:
             for key, issue in sorted(existing.items())
             if key not in wanted and key.split(":", 1)[0] in ran
         )
-        return opened + refreshed + closed
+        duplicates = tuple(
+            operation
+            for key, issue in marked
+            if existing[key] is not issue
+            for operation in self._plan_duplicates((issue,), existing[key])
+        )
+        return opened + refreshed + closed + duplicates
 
     ############################################################
 

@@ -59,3 +59,15 @@ deterministic check exists for every signal).
 emits tens of events, the cost is nil.
 
 **Rejected.** Caching with per-test resets (fixes tests, keeps the redirection hazard in production).
+
+### 2026-10-22 · Issue listings are read three times; duplicates converge
+
+**Decision.** `GithubAdapter.issues` unites three reads of the listing; the planner keeps the oldest issue per
+dashboard or incident key and closes the rest as duplicates.
+
+**Evidence.** The second fleet run on etrafilatura opened a second status issue (#14 beside #13). Measured with
+fresh installation tokens, scoped and unscoped: the labelled listing answered an empty 200 in 2 of 16 reads.
+Three united reads bring a false empty from ~12 % to ~0.2 %; convergence repairs what remains on the next run.
+
+**Rejected.** Trusting one read (duplicates); storing issue numbers outside GitHub (state to keep in sync);
+GitHub search (eventually consistent as well).

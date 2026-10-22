@@ -14,6 +14,8 @@ API_VERSION: Final = "2022-11-28"
 JSON: Final = "application/vnd.github+json"
 RAW: Final = "application/vnd.github.raw+json"
 ABSENT: Final = frozenset({HTTPStatus.NOT_FOUND, HTTPStatus.UNPROCESSABLE_ENTITY})
+### GitHub intermittently answers an issue listing with an empty 200 (measured: 2 in 16 reads); reads are united.
+LISTING_READS: Final = 3
 
 
 class GithubAdapter:
@@ -84,8 +86,8 @@ class GithubAdapter:
         """Whether a commit exists in a repository."""
         return await self._common_get(f"/repos/{slug}/commits/{sha}") is not None
 
-    async def issues(self, slug: str, label: str) -> tuple[Issue, ...]:
-        """Open issues carrying a label, pull requests excluded."""
+    async def _issues_page(self, slug: str, label: str) -> tuple[Issue, ...]:
+        """One read of the open issues carrying a label, pull requests excluded."""
         match await self._common_get(f"/repos/{slug}/issues?labels={quote(label)}&state=open&per_page=100"):
             case None:
                 return ()
@@ -95,6 +97,11 @@ class GithubAdapter:
                     for item in await response.json()
                     if "pull_request" not in item
                 )
+
+    async def issues(self, slug: str, label: str) -> tuple[Issue, ...]:
+        """Open issues carrying a label, by number: the union of LISTING_READS reads, never one empty answer."""
+        pages = [await self._issues_page(slug, label) for _ in range(LISTING_READS)]
+        return tuple(sorted({issue.number: issue for page in pages for issue in page}.values(), key=lambda i: i.number))
 
     async def apply(self, slug: str, operation: OperationIssue) -> None:
         """Carry out one planned tracker operation."""

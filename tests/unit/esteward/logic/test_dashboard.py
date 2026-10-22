@@ -78,3 +78,16 @@ async def test_plan_changes(dashboard: StatusDashboard, report: Report, now: dat
     ]
     assert isinstance(operations[2], CloseIssue)
     assert isinstance(operations[0], UpdateIssue)
+
+
+async def test_plan_converges(dashboard: StatusDashboard, report: Report) -> None:
+    body = dashboard.render((report,))
+    incident = dashboard.plan((report,), (), ())[1]
+    assert isinstance(incident, CreateIssue)
+    statuses = (Issue(14, TITLE, body), Issue(13, TITLE, body))
+    incidents = (Issue(21, incident.title, incident.body), Issue(20, incident.title, incident.body))
+    operations = dashboard.plan((report,), statuses, incidents)
+    assert operations == (
+        CloseIssue(14, "esteward: duplicate of #13."),
+        CloseIssue(21, "esteward: duplicate of #20."),
+    )

@@ -81,3 +81,11 @@ async def test_apply(httpserver: HTTPServer, github: GithubAdapter) -> None:
         ("POST", "/repos/o/r/issues/9/comments", {"body": "cleared"}),
         ("PATCH", "/repos/o/r/issues/9", {"state": "closed", "state_reason": "completed"}),
     ]
+
+
+async def test_issues_united_across_flaky_reads(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    listing = "/repos/o/r/issues"
+    httpserver.expect_oneshot_request(listing).respond_with_json([])
+    httpserver.expect_oneshot_request(listing).respond_with_json([{"number": 13, "title": "s", "body": "b"}])
+    httpserver.expect_request(listing).respond_with_json([{"number": 14, "title": "s", "body": "b"}])
+    assert [issue.number for issue in await github.issues("o/r", "esteward")] == [13, 14]

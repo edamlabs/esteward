@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, TITLE, StatusDashboard
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, UpdateIssue
+from esteward.models.issue import CloseIssue, CreateIssue, Issue, PinIssue, UpdateIssue
 from esteward.models.report import FindingReport, Report
 from esteward.models.verdict import Verdict
 
@@ -61,7 +61,14 @@ async def test_plan_first_run(dashboard: StatusDashboard, report: Report) -> Non
 async def test_plan_steady(dashboard: StatusDashboard, report: Report, escalated: FindingReport) -> None:
     status = Issue(1, TITLE, dashboard.render((report,)))
     incident = Issue(2, "esteward · dep: archived", dashboard.plan((report,), (), ())[1].body)  # ty: ignore[unresolved-attribute]
-    assert dashboard.plan((report,), (status,), (incident,)) == ()
+    assert dashboard.plan((report,), (status,), (incident,)) == (PinIssue(1),)
+
+
+async def test_plan_pins_kept_dashboard(dashboard: StatusDashboard, report: Report) -> None:
+    """The status issue is pinned on every run; the adapter skips one that already is."""
+    stale = Issue(3, TITLE, "old")
+    operations = dashboard.plan((report,), (stale,), ())
+    assert operations[:2] == (UpdateIssue(3, TITLE, dashboard.render((report,))), PinIssue(3))
 
 
 async def test_plan_changes(dashboard: StatusDashboard, report: Report, now: datetime) -> None:
@@ -73,10 +80,11 @@ async def test_plan_changes(dashboard: StatusDashboard, report: Report, now: dat
     operations = dashboard.plan((report,), (stale_status,), (stale_incident, cleared, other_module, unmarked))
     assert [(type(op).__name__, getattr(op, "number", None)) for op in operations] == [
         ("UpdateIssue", 1),
+        ("PinIssue", 1),
         ("UpdateIssue", 2),
         ("CloseIssue", 3),
     ]
-    assert isinstance(operations[2], CloseIssue)
+    assert isinstance(operations[3], CloseIssue)
     assert isinstance(operations[0], UpdateIssue)
 
 
@@ -88,6 +96,7 @@ async def test_plan_converges(dashboard: StatusDashboard, report: Report) -> Non
     incidents = (Issue(21, incident.title, incident.body), Issue(20, incident.title, incident.body))
     operations = dashboard.plan((report,), statuses, incidents)
     assert operations == (
+        PinIssue(13),
         CloseIssue(14, "esteward: duplicate of #13."),
         CloseIssue(21, "esteward: duplicate of #20."),
     )

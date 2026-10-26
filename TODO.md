@@ -96,15 +96,6 @@ key; a fix the solver cannot reach downgrades to `watch · blocked upstream` wit
 - crates.io rejects requests without a `User-Agent`.
 - PyPI PEP 792 status comes from the simple JSON API (`Accept: application/vnd.pypi.simple.v1+json`).
 
-## 2 · The status issue is pinned
-
-The status issue (`esteward · maintenance status`, label `esteward`) should be pinned on each repository.
-
-- Use GraphQL `pinIssue`; the REST API has none. Pinning is idempotent: skip an issue that is already pinned.
-- Do it from `StatusDashboard.plan` as a new operation (e.g. `PinIssue`). Every `match` over operations ends in
-  `assert_never`.
-- **Check:** after a fleet run, `gh api graphql` lists the status issue in `pinnedIssues` for all six repositories.
-
 ## 3 · Releases cut themselves (M3, policy = auto)
 
 Damien chose automatic releases, which are safe while the records exist (tags, changelog, provenance).

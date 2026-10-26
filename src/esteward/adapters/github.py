@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import wreq
 
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, UpdateIssue
+from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
 from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
 from esteward.models.signal import RepositorySignal
 
@@ -21,6 +21,15 @@ AUTOMERGE: Final = (
     " enablePullRequestAutoMerge(input: {pullRequestId: $node, mergeMethod: SQUASH}) { clientMutationId }"
     " }"
 )
+### Pinning lives only in GraphQL; a repository holds at most three pinned issues.
+PINNED: Final = (
+    "query($owner: String!, $name: String!, $number: Int!) {"
+    " repository(owner: $owner, name: $name) {"
+    " issue(number: $number) { id }"
+    " pinnedIssues(first: 3) { nodes { issue { number } } }"
+    " } }"
+)
+PIN: Final = "mutation($id: ID!) { pinIssue(input: {issueId: $id}) { issue { number } } }"
 ### A renamed or transferred repository answers 301/307 with its new API location; followed once.
 MOVED: Final = frozenset(
     {HTTPStatus.MOVED_PERMANENTLY, HTTPStatus.FOUND, HTTPStatus.TEMPORARY_REDIRECT, HTTPStatus.PERMANENT_REDIRECT}
@@ -112,6 +121,22 @@ class GithubAdapter:
             case response:
                 return (await response.json())["default_branch"]
 
+    async def _apply_pin(self, slug: str, number: int) -> None:
+        """Pin one issue, unless it already is: the pinned state lives only in GraphQL."""
+        owner, name = slug.split("/", 1)
+        data = await self._common_graphql(PINNED, {"owner": owner, "name": name, "number": number})
+        match data["repository"]["issue"]:
+            case None:
+                message = f"cannot pin: issue {slug}#{number} not found"
+                raise ValueError(message)
+            case issue:
+                pinned = frozenset(node["issue"]["number"] for node in data["repository"]["pinnedIssues"]["nodes"])
+                match number in pinned:
+                    case True:
+                        return
+                    case _:
+                        await self._common_graphql(PIN, {"id": issue["id"]})
+
     ############################################################
 
     ##### PUBLIC #####
@@ -190,6 +215,8 @@ class GithubAdapter:
                     f"/repos/{slug}/issues/{number}",
                     {"state": "closed", "state_reason": "completed"},
                 )
+            case PinIssue(number=number):
+                await self._apply_pin(slug, number)
             case CreatePull(branch=branch, title=title, body=body):
                 response = await self._common_send(
                     wreq.Method.POST,

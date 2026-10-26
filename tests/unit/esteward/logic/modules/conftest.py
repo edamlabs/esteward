@@ -9,7 +9,7 @@ import pytest
 
 from esteward.logic.bump import UvBump
 from esteward.logic.modules.act import ActModule
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, UpdateIssue
+from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
 from esteward.models.outcome import RunOutcome
 from esteward.models.package import KindPackage, LockedPackage
 from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
@@ -115,7 +115,7 @@ class FakeTracker:
                     branch: replace(pull, automerge=True) if pull.node == node else pull
                     for branch, pull in self.pulls.items()
                 }
-            case CreateIssue() | UpdateIssue() | CloseIssue():
+            case CreateIssue() | UpdateIssue() | CloseIssue() | PinIssue():
                 message = "the act stage never plans issue operations"
                 raise AssertionError(message)
             case unreachable:

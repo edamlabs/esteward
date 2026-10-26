@@ -1,0 +1,38 @@
+# Maintenance contract of edamlabs/e-serde (moved from damvolkov/e-serde on 2026-10-26).
+repo = "edamlabs/e-serde"
+kind = "lib"
+family = "eager"
+modules = ["deps", "security", "drift"]
+
+[deps]
+lockfiles = ["Cargo.lock", "uv.lock"]
+
+[[deps.watch]]
+name = "saphyr"
+repo = "https://github.com/saphyr-rs/saphyr"
+registry = "https://crates.io/crates/saphyr"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "pyo3"
+repo = "https://github.com/PyO3/pyo3"
+registry = "https://crates.io/crates/pyo3"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "toml"
+repo = "https://github.com/toml-rs/toml"
+registry = "https://crates.io/crates/toml"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "serde_json"
+repo = "https://github.com/serde-rs/json"
+registry = "https://crates.io/crates/serde_json"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "msgspec"
+repo = "https://github.com/msgspec/msgspec"
+registry = "https://pypi.org/project/msgspec/"
+license = "BSD-3-Clause"

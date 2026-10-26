@@ -14,6 +14,10 @@ API_VERSION: Final = "2022-11-28"
 JSON: Final = "application/vnd.github+json"
 RAW: Final = "application/vnd.github.raw+json"
 ABSENT: Final = frozenset({HTTPStatus.NOT_FOUND, HTTPStatus.UNPROCESSABLE_ENTITY})
+### A renamed or transferred repository answers 301/307 with its new API location; followed once.
+MOVED: Final = frozenset(
+    {HTTPStatus.MOVED_PERMANENTLY, HTTPStatus.FOUND, HTTPStatus.TEMPORARY_REDIRECT, HTTPStatus.PERMANENT_REDIRECT}
+)
 ### GitHub intermittently answers an issue listing with an empty 200 (measured: 2 in 16 reads); reads are united.
 LISTING_READS: Final = 3
 
@@ -34,10 +38,19 @@ class GithubAdapter:
 
     async def _common_get(self, path: str, accept: str = JSON) -> wreq.Response | None:
         """GET an API path; None when the resource does not exist."""
-        response = await self._client.get(f"{self._api}{path}", headers=self._headers | {"Accept": accept})
-        match response.status.as_int():
-            case status if status in ABSENT:
+        return await self._common_fetch(f"{self._api}{path}", accept, follow=True)
+
+    async def _common_fetch(self, url: str, accept: str, *, follow: bool) -> wreq.Response | None:
+        """GET a URL, following one redirect of a moved repository; None on absence, any other error raised."""
+        response = await self._client.get(url, headers=self._headers | {"Accept": accept})
+        match response.status.as_int(), response.headers.get("location"):
+            case status, _ if status in ABSENT:
                 return None
+            case status, location if status in MOVED and follow and location is not None:
+                return await self._common_fetch(bytes(location).decode(), accept, follow=False)
+            case status, _ if status in MOVED:
+                message = f"GitHub redirected twice from {url}: a moved repository is followed once"
+                raise ValueError(message)
             case _:
                 response.raise_for_status()
                 return response
@@ -64,7 +77,8 @@ class GithubAdapter:
                 return None
             case response:
                 data = await response.json()
-                return RepositorySignal(slug, bool(data["archived"]), self._common_moment(data.get("pushed_at")))
+                moved = data["full_name"] if data["full_name"].lower() != slug.lower() else None
+                return RepositorySignal(slug, bool(data["archived"]), self._common_moment(data.get("pushed_at")), moved)
 
     async def file(self, slug: str, path: str) -> str | None:
         """Raw content of a file on the default branch; None when absent."""

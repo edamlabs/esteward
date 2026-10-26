@@ -11,6 +11,7 @@ class RepositorySignal:
     slug: str
     archived: bool
     pushed_at: datetime | None
+    moved_to: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

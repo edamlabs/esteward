@@ -39,6 +39,12 @@ class RuleDeps[S]:
 
 
 REPOSITORY_RULES: Final[tuple[RuleDeps[RepositorySignal], ...]] = (
+    RuleDeps(
+        "moved",
+        Verdict.WATCH,
+        lambda s, d, n: s.moved_to is not None,
+        lambda s, d: f"{s.slug} moved to {s.moved_to}: update the fleet entry",
+    ),
     RuleDeps("archived", Verdict.ESCALATE, lambda s, d, n: s.archived, lambda s, d: f"{s.slug} is archived"),
     RuleDeps(
         "dormant",

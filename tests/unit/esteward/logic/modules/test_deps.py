@@ -36,6 +36,7 @@ async def test_run_healthy(
     ("repository", "package", "expected"),
     [
         ({"archived": True}, {}, {("archived", Verdict.ESCALATE)}),
+        ({"moved_to": "new/dep"}, {}, {("moved", Verdict.WATCH)}),
         ({"pushed_at": datetime(2025, 9, 1, tzinfo=UTC)}, {}, {("dormant", Verdict.WATCH)}),
         ({}, {"status": "archived"}, {("status", Verdict.ESCALATE)}),
         ({}, {"status": "quarantined"}, {("status", Verdict.ESCALATE)}),
@@ -44,7 +45,17 @@ async def test_run_healthy(
         ({}, {"license": "GPL-3.0"}, {("license", Verdict.ESCALATE)}),
         ({"pushed_at": None}, {"released_at": None}, {("health", Verdict.OK)}),
     ],
-    ids=["archived", "dormant", "pep792-archived", "pep792-quarantined", "stale", "yanked", "license", "unknown-dates"],
+    ids=[
+        "archived",
+        "moved",
+        "dormant",
+        "pep792-archived",
+        "pep792-quarantined",
+        "stale",
+        "yanked",
+        "license",
+        "unknown-dates",
+    ],
 )
 async def test_run_rules(
     host: FakeHost,

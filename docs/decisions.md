@@ -81,3 +81,15 @@ moved repository into a `watch` finding naming the new location; a second redire
 `msgspec/msgspec`: wreq does not follow redirects, and the redirect body has no `archived` field.
 
 **Rejected.** Enabling wreq's redirect following globally (hides the move the fleet should record).
+
+### 2026-10-26 · An advisory's fix is the fix of the locked version's branch
+
+**Decision.** The OSV adapter reports as `fixed` the end of the `introduced <= locked < fixed` interval holding the
+locked version (versions compared with `packaging`, semver's `-0` read as the version itself); a version in an open
+interval has no fix; an unparsable version falls back to the first fix listed.
+
+**Evidence.** anytomd's `webpki-roots` 1.0.9 was reported "fixed in 0.26.11" — the fix of the 0.26 branch; its
+branch is fixed in 1.0.10.
+
+**Rejected.** The first fix listed (wrong across release branches); a semver library per ecosystem (PEP 440
+ordering holds for the released versions OSV lists).

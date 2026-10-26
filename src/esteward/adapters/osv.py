@@ -5,6 +5,7 @@ from itertools import batched
 from typing import Any, Final
 
 import wreq
+from packaging.version import InvalidVersion, Version
 
 from esteward.models.package import AdvisoryPackage, KindPackage, LockedPackage
 
@@ -43,8 +44,49 @@ class OsvAdapter:
             return await response.json()
 
     @staticmethod
+    def _advisories_version(text: str) -> Version | None:
+        """An OSV version as comparable; semver's `-0` (lowest prerelease) is the version itself; None if unparsable."""
+        try:
+            return Version(text.removesuffix("-0"))
+        except InvalidVersion:
+            return None
+
+    @staticmethod
+    def _advisories_intervals(span: dict[str, Any]) -> list[tuple[str, str]]:
+        """The closed `(introduced, fixed)` intervals of one OSV range; a trailing `introduced` is open, unfixed."""
+        events = [(kind, value) for event in span.get("events", ()) for kind, value in event.items()]
+        return [
+            (start, end)
+            for (opened, start), (closed, end) in zip(events[::2], events[1::2], strict=False)
+            if (opened, closed) == ("introduced", "fixed")
+        ]
+
+    @staticmethod
+    def _advisories_fixed(locked: str, spans: list[dict[str, Any]]) -> str | None:
+        """The fix of the interval `introduced <= locked < fixed` that holds the locked version, None if unfixed.
+
+        OSV ranges alternate `introduced` and `fixed` events, one interval per release branch; the fix of another
+        branch is not a fix for this one. An unparsable locked version falls back to the first fix listed.
+        """
+        intervals = [interval for span in spans for interval in OsvAdapter._advisories_intervals(span)]
+        match OsvAdapter._advisories_version(locked):
+            case None:
+                return next((end for _, end in intervals), None)
+            case version:
+                return next(
+                    (
+                        end
+                        for start, end in intervals
+                        if (low := OsvAdapter._advisories_version(start)) is not None
+                        and (high := OsvAdapter._advisories_version(end)) is not None
+                        and low <= version < high
+                    ),
+                    None,
+                )
+
+    @staticmethod
     def _advisories_build(package: LockedPackage, detail: dict[str, Any]) -> AdvisoryPackage:
-        """The advisory as it concerns one package: its kind, summary and first fixed version."""
+        """The advisory as it concerns one package: its kind, summary and the fix of the locked version's branch."""
         affected = [
             entry
             for entry in detail.get("affected", ())
@@ -52,15 +94,8 @@ class OsvAdapter:
             and entry.get("package", {}).get("ecosystem") == package.ecosystem
         ]
         informational = {(entry.get("database_specific") or {}).get("informational") for entry in affected}
-        fixed = next(
-            (
-                event["fixed"]
-                for entry in affected
-                for span in entry.get("ranges", ())
-                for event in span.get("events", ())
-                if "fixed" in event
-            ),
-            None,
+        fixed = OsvAdapter._advisories_fixed(
+            package.version, [span for entry in affected for span in entry.get("ranges", ())]
         )
         return AdvisoryPackage(
             id=detail["id"],

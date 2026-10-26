@@ -44,6 +44,7 @@ The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eag
 | `deps` | every watched dependency: repository archived or dormant, registry status (PEP 792), release age, yanked latest, license change; every locked package: vulnerabilities and unmaintained notices | GitHub, PyPI, crates.io, OSV (RustSec included) |
 | `security` | every action pinned by commit SHA in the workflow paths resolves to a real commit | GitHub |
 | `drift` | `[tool.edamlabs]` in `pyproject.toml` declares the fleet entry's `kind` and `family`: missing acts, contradicting escalates | GitHub |
+| `release` | `## [Unreleased]` content gates a release; a Fixed/Security entry releases at once, anything else once the oldest unreleased commit passes the fleet's age; patch by default, minor on `### Added` or `feat:`, a breaking marker escalates; a folded version without its tag is carried | GitHub (changelog, tags, commits) |
 
 More modules (upstream, release, docs, community) follow the same contract: a fleet entry in, a
 `Report` out.
@@ -60,6 +61,16 @@ When the solver cannot reach the fix, the reverse dependency tree (`cargo tree -
 decides: an intermediate package pinning the vulnerable range downgrades the finding to
 `watch · blocked upstream` with the chain as evidence (`zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`); the
 project's own manifest blocking the fix escalates, since that range is a human decision.
+
+## Release
+
+With `--release`, the decision becomes the release. The engine folds `[Unreleased]` into
+`## [x.y.z] — date` — line for line the fold e-serde's release workflow proved — bumps the static
+version fields, re-syncs the root lockfiles, and opens one self-merging `chore(release): vX.Y.Z` PR.
+A later run pushes the tag once that PR has merged, onto its merge commit; the repository's own
+tag-driven workflow builds and publishes. A version folded but untagged holds the next release
+(`watch`), and anything that would need a major version escalates instead. The module is enabled per
+fleet entry, as repositories converge onto the tag-push flow.
 
 ## The fleet
 
@@ -94,7 +105,7 @@ with the `eself-maintenance` app token scoped to each project's repository.
 ```bash
 make check                        # lint, types, import contracts, tests at 100 % coverage
 make run P=etrafilatura           # dry run with your gh token: verdicts on screen, nothing published
-uv run esteward run etrafilatura --act --publish   # what the fleet job does
+uv run esteward run etrafilatura --act --release --publish   # what the fleet job does
 ```
 
 Decisions and their evidence: [`docs/decisions.md`](docs/decisions.md).

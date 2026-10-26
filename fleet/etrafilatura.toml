@@ -2,7 +2,7 @@
 repo = "edamlabs/etrafilatura"
 kind = "lib"
 family = "binding"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "release"]
 
 [deps]
 release_age_days = 540

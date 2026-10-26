@@ -179,3 +179,28 @@ the treatment is very simple, and three stdlib cuts are the simple case.
 **Rejected.** Keeping the functions in `logic/` (agnostic operations in the domain layer); furl (a dependency
 for three `urlsplit` cuts); one utility module per helper (the path names the module, the class holds the
 logic).
+
+### 2026-10-26 · The release mechanism lives once, in esteward; repositories keep tag-driven publishing
+
+**Decision.** The release policy (content in `## [Unreleased]` gates, a Fixed/Security entry releases at
+once, anything else once the oldest unreleased commit passes the fleet entry's `unreleased_age_days`;
+patch by default, minor on `### Added` or a `feat:` commit, a breaking marker escalates) and its execution
+both live in esteward. The stage folds the changelog line for line like e-serde's proven awk (golden-tested
+against its output), bumps the static version fields, re-syncs the root lockfiles, opens one self-merging
+`chore(release): vX.Y.Z` PR per version, and pushes the tag onto that PR's merge commit on a later run.
+Repositories keep only the tag → build/publish half of their release flow. The module is enabled per fleet
+entry as repositories converge: etrafilatura and anytomd first, whose `release.yml` already triggers on
+`v*` pushes.
+
+**Evidence.** The same actions — bump, fold, PR, tag — already existed once (e-serde's `release.yml`) and
+would have needed copies in three more repositories; the organisation's instruction is to align same-action
+files to the newest of them and to keep what can be common in esteward. Tagging on a later run instead of
+polling for the merge keeps a fleet run bounded, and every intermediate state converges: a folded version
+without its tag is a `watch` row, and the next run tags it. Live dry runs on etrafilatura and anytomd print
+the decisions (`no unreleased content`, tag and changelog agreeing).
+
+**Rejected.** Copying e-serde's `release.yml` into the tag-driven repositories (four copies of one
+mechanism, drifting — the original TODO's preference, superseded by the centralisation instruction);
+esteward dispatching each repository's release workflow (the mechanism still lives in five places);
+blocking the run until the release PR merges (a twenty-minute poll whose failure mode needs the same
+cross-run state anyway); automating a major release (a breaking marker escalates instead).

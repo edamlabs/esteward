@@ -29,7 +29,7 @@ jobs:
 )
 async def test_run_pins(host: FakeHost, security_module: SecurityModule, fleet: Fleet, path: str, found: bool) -> None:
     host.files["edamlabs/project", path] = WORKFLOW
-    host.commits.add(("actions/checkout", REAL))
+    host.known.add(("actions/checkout", REAL))
     report = await security_module.run(fleet)
     expected = [("actions/checkout", Verdict.OK), ("owner/tool", Verdict.ESCALATE)] if found else []
     assert sorted((f.subject, f.verdict) for f in report.findings) == expected

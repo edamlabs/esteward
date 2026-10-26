@@ -100,25 +100,27 @@ key; a fix the solver cannot reach downgrades to `watch · blocked upstream` wit
 
 Damien chose automatic releases, which are safe while the records exist (tags, changelog, provenance).
 
-- **Policy, per `kind`:** release when `## [Unreleased]` in `CHANGELOG.md` has content and the oldest unreleased
-  commit is older than N days (a fleet setting).
-  - A `fix`/security entry releases at once.
-  - Patch by default. Minor when the Unreleased section has `### Added` or a `feat:` commit. Never major: a major
-    release is `escalate`.
-- **Trigger, per repository's flow** (table above):
-  - Tag-driven repos (etrafilatura, anytomd, gliner): the tag must sit on a commit whose version bump is already
-    merged. They need a release PR (bump the manifest version + fold `[Unreleased]` into `## [x.y.z] — date`) before
-    the tag.
-  - e-serde already does all of this in `release.yml` (`workflow_dispatch` → app-token PR → tag). Prefer converging
-    the tag-driven repos onto that shape over writing a second mechanism.
-  - e-voice releases per image; its `service` input comes from which crates changed since the last tag.
-- **Changelog fold:** the new heading must replace `[Unreleased]`'s content, never stack a commit list above it.
-  e-serde's awk (`.github/workflows/release.yml`) is the proven version: with curated notes they become the body; when
-  empty, the commit subjects do.
-- **Check:**
-  - A dry-run mode prints the decision per repository.
-  - One real automatic patch release, on a repository with pending fixes, lands on PyPI/GHCR with no human step.
-  - A unit test covers every branch of the policy.
+**Done (2026-10-26).** The `release` module decides from the records, and `esteward run --release` carries the
+decision out; the mechanism lives once, in esteward (decisions 2026-10-26). Policy: content in
+`## [Unreleased]` gates, a Fixed/Security entry releases at once, anything else once the oldest unreleased
+commit passes the fleet entry's `unreleased_age_days`; patch by default, minor on `### Added` or a `feat:`
+commit, a breaking marker escalates. Execution: fold the changelog line for line like e-serde's awk, bump the
+static version fields, re-sync the root lockfiles, open one self-merging `chore(release): vX.Y.Z` PR, and push
+the tag onto that PR's merge commit on a later run; the repository's own tag-driven `release.yml` publishes.
+A version folded but untagged holds the next release (`watch`). Enabled on **etrafilatura** and **anytomd**
+(both already trigger on `v*` pushes); live dry runs print the decisions.
+
+- **Check still open:** one real automatic patch release, on a repository with pending fixes, lands on
+  PyPI/GHCR with no human step. Blocked on a repository actually accumulating an unreleased fix — every
+  `[Unreleased]` is empty as of 2026-10-26, so the engine correctly decides "no unreleased content". Watch
+  the first `fix:` that lands on etrafilatura or anytomd.
+- **Enable the rest as each converges:**
+  - **gliner** and **e-serde** publish via `workflow_dispatch`, not a `v*` push, so the engine's tag would not
+    trigger a build. Converge their `release.yml` onto the tag-push flow (gliner: drop the manual-bump `tag`
+    job; e-serde: keep its wheels/publish jobs, trigger them on the tag esteward pushes), then add `release`
+    to their fleet entries.
+  - **e-voice** releases per image (`stt-v*`/`tts-v*`/`full-v*`); its `service` comes from which crates changed
+    since the last tag. Needs its own per-image policy before it can be enabled.
 
 ## 2 · Upstream (M2), docs (M4), community (M5)
 

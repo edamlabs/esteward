@@ -1,7 +1,6 @@
 """The act stage end to end: a vulnerable lockfile in a bare remote, a fake uv on PATH, a tracker on the wire."""
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,23 +9,12 @@ from pytest_httpserver import HTTPServer
 from esteward.cli.commands import run as run_command
 from esteward.core.settings import Settings
 from esteward.models.fleet import ModuleFleet
-from tests.unit.esteward.cli.conftest import BRANCH
+from tests.unit.esteward.cli.conftest import BRANCH, heads
 
 
 @pytest.fixture(autouse=True)
 def local(monkeypatch: pytest.MonkeyPatch, act_settings: Settings) -> None:
     monkeypatch.setattr(run_command, "st", act_settings)
-
-
-def heads(origin: Path) -> str:
-    """The branches of the bare remote."""
-    done = subprocess.run(
-        ("git", "-C", str(origin / "edamlabs" / "project.git"), "for-each-ref", "refs/heads"),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return done.stdout
 
 
 def test_run_act_publish(

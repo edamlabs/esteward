@@ -11,7 +11,7 @@ from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.security import SecurityModule
 from esteward.models.fleet import DepsFleet, FamilyFleet, Fleet, KindFleet, ModuleFleet, SecurityFleet, WatchFleet
 from esteward.models.package import AdvisoryPackage, EcosystemPackage, KindPackage, LockedPackage
-from esteward.models.signal import PackageSignal, RepositorySignal
+from esteward.models.signal import CommitSignal, PackageSignal, RepositorySignal
 
 
 @dataclass
@@ -20,7 +20,9 @@ class FakeHost:
 
     repositories: dict[str, RepositorySignal] = field(default_factory=dict)
     files: dict[tuple[str, str], str] = field(default_factory=dict)
-    commits: set[tuple[str, str]] = field(default_factory=set)
+    known: set[tuple[str, str]] = field(default_factory=set)
+    tag_list: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    history: dict[str, tuple[CommitSignal, ...]] = field(default_factory=dict)
 
     async def repository(self, slug: str) -> RepositorySignal | None:
         return self.repositories.get(slug)
@@ -32,7 +34,13 @@ class FakeHost:
         return tuple(path for owner, path in self.files if owner == slug)
 
     async def commit(self, slug: str, sha: str) -> bool:
-        return (slug, sha) in self.commits
+        return (slug, sha) in self.known
+
+    async def tags(self, slug: str) -> tuple[str, ...]:
+        return self.tag_list.get(slug, ())
+
+    async def commits(self, slug: str, since: str) -> tuple[CommitSignal, ...]:
+        return self.history.get(slug, ())
 
 
 @dataclass
@@ -55,6 +63,17 @@ class FakeAdvisories:
     async def advisories(self, packages: tuple[LockedPackage, ...]) -> tuple[AdvisoryPackage, ...]:
         self.queried.append(packages)
         return tuple(advisory for advisory in self.known if advisory.package in packages)
+
+
+def advisory(name: str, version: str, kind: KindPackage, fixed: str | None, advisory_id: str) -> AdvisoryPackage:
+    """One advisory against one locked PyPI package."""
+    return AdvisoryPackage(
+        id=advisory_id,
+        package=LockedPackage(EcosystemPackage.PYPI, name, version),
+        kind=kind,
+        summary="s",
+        fixed=fixed,
+    )
 
 
 @pytest.fixture

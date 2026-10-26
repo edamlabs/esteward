@@ -1,7 +1,7 @@
-"""In-memory workspace and tracker: the act stage is tested without git, tools or network."""
+"""In-memory workspace and tracker: the act and release stages are tested without git, tools or network."""
 
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import assert_never
 
@@ -9,17 +9,66 @@ import pytest
 
 from esteward.logic.bump import UvBump
 from esteward.logic.modules.act import ActModule
+from esteward.logic.modules.release import KeyRelease, ReleaseModule, ReleaseStage
 from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
 from esteward.models.outcome import RunOutcome
 from esteward.models.package import KindPackage, LockedPackage
 from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
 from esteward.models.report import FindingReport, Report
+from esteward.models.signal import CommitSignal
 from esteward.models.verdict import Verdict
-from tests.unit.esteward.logic.conftest import FakeAdvisories
+from tests.unit.esteward.logic.conftest import FakeAdvisories, FakeHost
 
 BRANCH = "esteward/act/deps-advisory-vulnerability-urllib3-1-26-0"
 KEY = "deps:advisory:vulnerability:urllib3@1.26.0"
 TITLE = "fix(deps): urllib3 1.26.0 → 2.5.0"
+MERGE_SHA = "d" * 40
+RELEASE_BRANCH = "esteward/release/v0.1.1"
+RELEASE_TITLE = "chore(release): v0.1.1"
+REPO = "edamlabs/project"
+
+CHANGELOG_DUE = """# Changelog
+
+## [Unreleased]
+
+### Fixed
+
+- A real bug.
+
+## [0.1.0] — 2026-10-01
+
+First release.
+"""
+CHANGELOG_FOLDED = """# Changelog
+
+## [Unreleased]
+
+## [0.1.1] — 2026-10-22
+
+### Fixed
+
+- A real bug.
+
+## [0.1.0] — 2026-10-01
+
+First release.
+"""
+CHANGELOG_EXHAUSTED = """# Changelog
+
+## [Unreleased]
+
+## [0.1.0] — 2026-10-01
+
+First release.
+"""
+PYPROJECT_STATIC = '[project]\nname = "project"\nversion = "0.1.0"\n'
+PYPROJECT_DYNAMIC = '[project]\nname = "project"\ndynamic = ["version"]\n'
+CARGO_STATIC = '[package]\nname = "project"\nversion = "0.1.0"\n'
+
+
+def commit_at(subject: str, now: datetime, days: int) -> CommitSignal:
+    """One unreleased commit, `days` before the run's fixed moment."""
+    return CommitSignal(subject, now - timedelta(days=days))
 
 
 @dataclass
@@ -37,6 +86,7 @@ class FakeWorkspace:
     ran: list[tuple[str, ...]] = field(default_factory=list)
     committed: list[tuple[str, str]] = field(default_factory=list)
     pushed: list[str] = field(default_factory=list)
+    tagged: list[tuple[str, str]] = field(default_factory=list)
     checkouts: list[str] = field(default_factory=list)
     restored: int = 0
     dirty: bool = False
@@ -63,6 +113,10 @@ class FakeWorkspace:
     async def read(self, path: str) -> str | None:
         return self.files.get(path)
 
+    async def write(self, path: str, text: str) -> None:
+        self.files[path] = text
+        self.dirty = True
+
     async def commit(self, branch: str, message: str) -> bool:
         self.committed.append((branch, message))
         changed = self.dirty if self.commit_returns is None else self.commit_returns
@@ -71,6 +125,9 @@ class FakeWorkspace:
 
     async def push(self, branch: str) -> None:
         self.pushed.append(branch)
+
+    async def tag(self, name: str, rev: str) -> None:
+        self.tagged.append((name, rev))
 
     async def restore(self) -> None:
         self.files = dict(self.base)
@@ -86,6 +143,7 @@ class FakeTracker:
     """
 
     pulls: dict[str, Pull] = field(default_factory=dict)
+    merged_pulls: dict[str, Pull] = field(default_factory=dict)
     applied: list[OperationIssue | OperationPull] = field(default_factory=list)
     create_forgets: bool = False
     _created: int = field(default=0, init=False)
@@ -95,6 +153,9 @@ class FakeTracker:
 
     async def pull(self, slug: str, branch: str) -> Pull | None:
         return self.pulls.get(branch)
+
+    async def merged(self, slug: str, branch: str) -> Pull | None:
+        return self.merged_pulls.get(branch)
 
     async def apply(self, slug: str, operation: OperationIssue | OperationPull) -> None:
         self.applied.append(operation)
@@ -173,3 +234,68 @@ def tree(locked: LockedPackage) -> tuple[str, ...]:
 def fixed_lock(resources: Path) -> str:
     """The uv.lock text with urllib3 at its fix."""
     return (resources / "uv-fixed.lock").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def release_host(host: FakeHost, now: datetime) -> FakeHost:
+    """A host answering the release reads: one tag, one recent fix commit since it."""
+    host.files[REPO, "CHANGELOG.md"] = CHANGELOG_DUE
+    host.tag_list[REPO] = ("v0.1.0",)
+    host.history[REPO] = (CommitSignal("fix: a real bug", now - timedelta(days=2)),)
+    return host
+
+
+@pytest.fixture
+def release_module(release_host: FakeHost, tracker: FakeTracker, now: datetime) -> ReleaseModule:
+    return ReleaseModule(release_host, tracker, now)
+
+
+@pytest.fixture
+def release_workspace(workspace: FakeWorkspace) -> FakeWorkspace:
+    """A checkout holding the due changelog and both static manifests with their locks."""
+    workspace.base = {
+        "CHANGELOG.md": CHANGELOG_DUE,
+        "pyproject.toml": PYPROJECT_STATIC,
+        "Cargo.toml": CARGO_STATIC,
+        "uv.lock": "version = 1\n",
+        "Cargo.lock": "version = 4\n",
+    }
+    return workspace
+
+
+@pytest.fixture
+def release_stage(
+    release_workspace: FakeWorkspace, release_host: FakeHost, tracker: FakeTracker, now: datetime
+) -> ReleaseStage:
+    return ReleaseStage(release_workspace, release_host, tracker, now, publish=True)
+
+
+@pytest.fixture
+def pending_act() -> FindingReport:
+    """The release module's act finding when a version is due."""
+    return FindingReport(
+        key=KeyRelease.PENDING,
+        module="release",
+        subject="release",
+        check="pending",
+        verdict=Verdict.ACT,
+        detail="release v0.1.1 (patch): a Fixed or Security entry releases at once",
+    )
+
+
+@pytest.fixture
+def tag_act() -> FindingReport:
+    """The release module's act finding when a folded version waits for its tag."""
+    return FindingReport(
+        key=KeyRelease.TAG,
+        module="release",
+        subject="release",
+        check="tag",
+        verdict=Verdict.ACT,
+        detail="tag v0.1.1 pending: release PR #8 merged, the tag is not pushed",
+    )
+
+
+@pytest.fixture
+def release_report(now: datetime, pending_act: FindingReport) -> Report:
+    return Report(repo=REPO, module="release", generated=now, findings=(pending_act,))

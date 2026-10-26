@@ -1,7 +1,6 @@
 """The workspace adapter on real git: clones, tool runs, commits, pushes, restores, credential injection."""
 
 import base64
-import subprocess
 from datetime import timedelta
 from pathlib import Path
 
@@ -10,16 +9,7 @@ from pytest_httpserver import HTTPServer
 
 from esteward.adapters.workspace import WorkspaceAdapter
 from esteward.models.outcome import RunOutcome
-
-IDENTITY = "esteward[bot] <eself-maintenance[bot]@users.noreply.github.com>"
-
-
-def git(*argv: str) -> str:
-    """One git command in the fixtures' identity, its stdout."""
-    done = subprocess.run(
-        ("git", "-c", "user.name=test", "-c", "user.email=test@test", *argv), capture_output=True, text=True, check=True
-    )
-    return done.stdout
+from tests.unit.esteward.adapters.conftest import IDENTITY, git
 
 
 async def test_checkout_read(workspace: WorkspaceAdapter) -> None:
@@ -82,6 +72,29 @@ async def test_push_failure(workspace: WorkspaceAdapter) -> None:
     await workspace.run(("git", "remote", "set-url", "origin", "/nonexistent/o/r.git"))
     with pytest.raises(RuntimeError, match="git push failed"):
         await workspace.push("br")
+
+
+async def test_write(workspace: WorkspaceAdapter) -> None:
+    await workspace.checkout("o/r")
+    await workspace.write("uv.lock", "bumped\n")
+    assert await workspace.read("uv.lock") == "bumped\n"
+
+
+async def test_tag(workspace: WorkspaceAdapter, remote: Path) -> None:
+    """The tag lands on the exact revision, in the bare remote, where the release flow picks it up."""
+    await workspace.checkout("o/r")
+    head = (await workspace.run(("git", "rev-parse", "HEAD"))).out.strip()
+    await workspace.tag("v0.2.0", head)
+    assert "refs/tags/v0.2.0" in git("-C", str(remote / "o" / "r.git"), "for-each-ref", "refs/tags")
+    tagged = git("-C", str(remote / "o" / "r.git"), "rev-list", "-n", "1", "v0.2.0").strip()
+    assert tagged == head
+
+
+async def test_tag_of_unfetched_revision(workspace: WorkspaceAdapter) -> None:
+    """A revision outside the shallow clone is fetched before the tag: the release PR's merge commit."""
+    await workspace.checkout("o/r")
+    with pytest.raises(RuntimeError, match="git fetch failed"):
+        await workspace.tag("v0.2.0", "a" * 40)
 
 
 async def test_timeout(workspace: WorkspaceAdapter, monkeypatch: pytest.MonkeyPatch) -> None:

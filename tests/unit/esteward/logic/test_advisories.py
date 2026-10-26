@@ -3,18 +3,8 @@
 import pytest
 
 from esteward.logic.advisories import GroupAdvisories
-from esteward.models.package import AdvisoryPackage, EcosystemPackage, KindPackage, LockedPackage
-
-
-def advisory(name: str, version: str, kind: KindPackage, fixed: str | None, advisory_id: str) -> AdvisoryPackage:
-    """One advisory against one locked package."""
-    return AdvisoryPackage(
-        id=advisory_id,
-        package=LockedPackage(EcosystemPackage.PYPI, name, version),
-        kind=kind,
-        summary="s",
-        fixed=fixed,
-    )
+from esteward.models.package import KindPackage
+from tests.unit.esteward.logic.conftest import advisory
 
 
 @pytest.mark.parametrize(

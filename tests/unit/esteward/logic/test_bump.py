@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from esteward.logic.bump import BUMPERS, CargoBump, UvBump, direct_chain, render_chain, tree_chain
+from esteward.logic.bump import BUMPERS, CargoBump, ChainBump, UvBump
 from esteward.models.package import EcosystemPackage, LockedPackage
 
 
@@ -75,29 +75,33 @@ async def test_tree_argv(crates: LockedPackage, pypi: LockedPackage) -> None:
     ],
     ids=["cargo-blocked", "cargo-direct", "cargo-sections", "uv-blocked", "uv-direct"],
 )
-async def test_tree_chain(resources: Path, fixture: str, rendered: str, direct: bool) -> None:
-    chain = tree_chain((resources / fixture).read_text(encoding="utf-8"))
-    assert render_chain(chain) == rendered
-    assert direct_chain(chain) is direct
+async def test_chain(resources: Path, fixture: str, rendered: str, direct: bool) -> None:
+    chain = ChainBump((resources / fixture).read_text(encoding="utf-8"))
+    assert chain.render() == rendered
+    assert chain.direct() is direct
 
 
-async def test_tree_chain_empty() -> None:
-    assert tree_chain("") == ()
+async def test_chain_empty() -> None:
+    assert ChainBump("").walk() == ()
 
 
-async def test_tree_chain_junk() -> None:
+async def test_chain_junk() -> None:
     text = (
         "error: There are multiple `zstd-safe` packages in your project, and the specification `zstd-safe` is ambiguous.\n"
         "Please re-run this command with one of the following specifications:\n"
         "  zstd-safe@5.0.2+zstd.1.5.2\n"
         "  zstd-safe@7.3.0\n"
     )
-    assert tree_chain(text) == ()
+    assert ChainBump(text).walk() == ()
 
 
-async def test_tree_chain_stops_at_member(resources: Path) -> None:
-    chain = tree_chain((resources / "cargo-tree-blocked.txt").read_text(encoding="utf-8"))
-    assert [(node.name, node.member) for node in chain] == [("zip", False), ("npyz", False), ("e-voice-tts", True)]
+async def test_chain_stops_at_member(resources: Path) -> None:
+    chain = ChainBump((resources / "cargo-tree-blocked.txt").read_text(encoding="utf-8"))
+    assert [(node.name, node.member) for node in chain.walk()] == [
+        ("zip", False),
+        ("npyz", False),
+        ("e-voice-tts", True),
+    ]
 
 
 async def test_bumpers(crates: LockedPackage, pypi: LockedPackage) -> None:

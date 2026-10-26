@@ -1,0 +1,26 @@
+# Maintenance contract of edamlabs/gliner (moved from damvolkov/gliner on 2026-10-26).
+repo = "edamlabs/gliner"
+kind = "service"
+family = "binding"
+modules = ["deps", "security", "drift"]
+
+[deps]
+lockfiles = ["Cargo.lock", "tools/export/uv.lock", "tools/train/uv.lock"]
+
+[[deps.watch]]
+name = "ort"
+repo = "https://github.com/pykeio/ort"
+registry = "https://crates.io/crates/ort"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "tokenizers"
+repo = "https://github.com/huggingface/tokenizers"
+registry = "https://crates.io/crates/tokenizers"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "gliner"
+repo = "https://github.com/urchade/GLiNER"
+registry = "https://pypi.org/project/gliner/"
+license = "Apache-2.0"

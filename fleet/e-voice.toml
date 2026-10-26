@@ -1,0 +1,32 @@
+# Maintenance contract of edamlabs/e-voice (moved from damvolkov/e-voice on 2026-10-26).
+repo = "edamlabs/e-voice"
+kind = "service"
+family = "eager"
+modules = ["deps", "security", "drift"]
+
+[deps]
+lockfiles = ["Cargo.lock", "eval/uv.lock"]
+
+[[deps.watch]]
+name = "ort"
+repo = "https://github.com/pykeio/ort"
+registry = "https://crates.io/crates/ort"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "sherpa-onnx"
+repo = "https://github.com/k2-fsa/sherpa-onnx"
+registry = "https://crates.io/crates/sherpa-onnx"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "figment"
+repo = "https://github.com/SergioBenitez/Figment"
+registry = "https://crates.io/crates/figment"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "axum"
+repo = "https://github.com/tokio-rs/axum"
+registry = "https://crates.io/crates/axum"
+license = "MIT"

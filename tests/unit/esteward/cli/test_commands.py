@@ -32,6 +32,7 @@ def test_run_dry(world: HTTPServer, tmp_path: Path, capsys: pytest.CaptureFixtur
     assert {name: [f["verdict"] for f in r["findings"]] for name, r in reports.items()} == {
         "deps": ["ok", "escalate"],
         "security": ["escalate"],
+        "drift": ["ok", "ok"],
     }
     assert not [request for request, _ in world.log if request.method == "POST" and request.path.endswith("/issues")]
     assert "edamlabs/project" in capsys.readouterr().out

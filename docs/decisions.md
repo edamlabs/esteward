@@ -93,3 +93,16 @@ branch is fixed in 1.0.10.
 
 **Rejected.** The first fix listed (wrong across release branches); a semver library per ecosystem (PEP 440
 ordering holds for the released versions OSV lists).
+
+### 2026-10-26 · Two identity axes: kind and family
+
+**Decision.** Every repository declares `kind` (`lib` | `service`; desktop binaries next) and `family` (`eager` |
+`binding` | `infra`) in `pyproject.toml` `[tool.edamlabs]`; the fleet entry repeats them; the `drift` module acts
+on a missing declaration and escalates a contradiction.
+
+**Evidence.** What a project ships decides its release path (PyPI or GHCR); what it is decides its contract (a
+binding keeps its upstream's syntax, an eager product defines its own). The two vary independently: a binding is
+a lib today, an eager product can be either.
+
+**Rejected.** One combined category (conflates delivery with nature); PyPI classifiers (no vocabulary for either
+axis); declaring identity only in the fleet (the repository would not say what it is).

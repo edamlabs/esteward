@@ -1,7 +1,8 @@
 # Maintenance contract of edamlabs/etrafilatura.
 repo = "edamlabs/etrafilatura"
 kind = "lib"
-modules = ["deps", "security"]
+family = "binding"
+modules = ["deps", "security", "drift"]
 
 [deps]
 release_age_days = 540

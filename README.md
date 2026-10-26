@@ -11,14 +11,40 @@ incident** that closes itself when the incident clears. No pull request waits fo
 | 🟡 act | a deterministic action exists (a fixed version of a vulnerable package) | a row; the action module carries it out |
 | 🔴 escalate | a human decision (archived dependency, license change, phantom action pin) | its own issue, deduplicated by key |
 
+## Identity
+
+Every EDamLabs repository declares what it is in `pyproject.toml`, and its fleet entry repeats it; the `drift`
+module escalates any contradiction.
+
+```toml
+[tool.edamlabs]
+kind = "lib"        # what it ships
+family = "binding"  # what it is
+```
+
+| `kind` | Ships | Release |
+|---|---|---|
+| `lib` | an importable package | PyPI, trusted publishing |
+| `service` | a long-running process | a Docker image on GHCR |
+| *`desktop`, next* | *a desktop application* | *signed binaries* |
+
+| `family` | Is | Projects |
+|---|---|---|
+| `eager` | the eager series: EDamLabs' own products, the `e-` line | e-serde, e-voice |
+| `binding` | a Python binding of a third-party engine, kept compatible with its upstream | etrafilatura, anytomd, gliner |
+| `infra` | the organisation's own machinery | esteward |
+
+The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eager series.
+
 ## Modules
 
 | Module | Checks | Sources |
 |---|---|---|
 | `deps` | every watched dependency: repository archived or dormant, registry status (PEP 792), release age, yanked latest, license change; every locked package: vulnerabilities and unmaintained notices | GitHub, PyPI, crates.io, OSV (RustSec included) |
 | `security` | every action pinned by commit SHA in the workflow paths resolves to a real commit | GitHub |
+| `drift` | `[tool.edamlabs]` in `pyproject.toml` declares the fleet entry's `kind` and `family`: missing acts, contradicting escalates | GitHub |
 
-More modules (upstream, release, docs, community, drift) follow the same contract: a fleet entry in, a
+More modules (upstream, release, docs, community) follow the same contract: a fleet entry in, a
 `Report` out.
 
 ## The fleet
@@ -28,7 +54,8 @@ One file per project, `fleet/<repo>.toml`:
 ```toml
 repo = "edamlabs/etrafilatura"
 kind = "lib"                       # lib (PyPI) | service (Docker)
-modules = ["deps", "security"]
+family = "binding"                 # eager | binding | infra
+modules = ["deps", "security", "drift"]
 
 [deps]
 release_age_days = 540             # watch past this

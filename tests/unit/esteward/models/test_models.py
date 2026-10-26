@@ -30,7 +30,9 @@ async def test_report_verdict(now: datetime, verdicts: tuple[Verdict, ...], expe
 
 async def test_fleet_load(tmp_path: Path) -> None:
     entry = tmp_path / "x.toml"
-    entry.write_text('repo = "edamlabs/x"\nkind = "service"\nmodules = ["security"]\n', encoding="utf-8")
+    entry.write_text(
+        'repo = "edamlabs/x"\nkind = "service"\nfamily = "eager"\nmodules = ["security"]\n', encoding="utf-8"
+    )
     fleet = Fleet.load(entry)
     assert (fleet.kind, fleet.modules, fleet.deps.watch, fleet.security.paths) == (
         KindFleet.SERVICE,
@@ -42,7 +44,7 @@ async def test_fleet_load(tmp_path: Path) -> None:
 
 async def test_fleet_load_invalid(tmp_path: Path) -> None:
     entry = tmp_path / "x.toml"
-    entry.write_text('repo = "edamlabs/x"\nkind = "desktop"\nmodules = []\n', encoding="utf-8")
+    entry.write_text('repo = "edamlabs/x"\nkind = "desktop"\nfamily = "eager"\nmodules = []\n', encoding="utf-8")
     with pytest.raises(msgspec.ValidationError):
         Fleet.load(entry)
 

@@ -1,7 +1,8 @@
 # Maintenance contract of edamlabs/esteward: the engine watches itself.
 repo = "edamlabs/esteward"
 kind = "lib"
-modules = ["deps", "security"]
+family = "infra"
+modules = ["deps", "security", "drift"]
 
 [deps]
 lockfiles = ["uv.lock"]

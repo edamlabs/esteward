@@ -8,10 +8,19 @@ import msgspec
 
 
 class KindFleet(StrEnum):
-    """What the project ships: a library on PyPI or a Docker service."""
+    """What the project ships: a library on PyPI, or a service as a Docker image. Desktop binaries come next."""
 
     LIB = auto()
     SERVICE = auto()
+
+
+class FamilyFleet(StrEnum):
+    """What the project is: the eager series (EDamLabs' own e- products), a binding of a third-party engine, or the
+    organisation's own infrastructure."""
+
+    EAGER = auto()
+    BINDING = auto()
+    INFRA = auto()
 
 
 class ModuleFleet(StrEnum):
@@ -19,6 +28,7 @@ class ModuleFleet(StrEnum):
 
     DEPS = auto()
     SECURITY = auto()
+    DRIFT = auto()
 
 
 class WatchFleet(msgspec.Struct, frozen=True, kw_only=True):
@@ -50,6 +60,7 @@ class Fleet(msgspec.Struct, frozen=True, kw_only=True):
 
     repo: str
     kind: KindFleet
+    family: FamilyFleet
     modules: tuple[ModuleFleet, ...]
     deps: DepsFleet = DepsFleet()
     security: SecurityFleet = SecurityFleet()

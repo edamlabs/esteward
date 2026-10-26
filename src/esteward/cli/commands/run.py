@@ -17,6 +17,7 @@ from esteward.core.lifespan import RuntimeLifespan, lifespan
 from esteward.core.settings import settings as st
 from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDashboard
 from esteward.logic.modules.deps import DepsModule
+from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.security import SecurityModule
 from esteward.models.fleet import Fleet, ModuleFleet
 from esteward.models.issue import OperationIssue
@@ -35,6 +36,7 @@ MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], Runner
     {
         ModuleFleet.DEPS: lambda rt, now: DepsModule(rt.github, rt.registries, rt.advisories, now, st.concurrency),
         ModuleFleet.SECURITY: lambda rt, now: SecurityModule(rt.github, now, st.concurrency),
+        ModuleFleet.DRIFT: lambda rt, now: DriftModule(rt.github, now),
     }
 )
 

@@ -37,6 +37,12 @@ esteward = "esteward.cli.main:main"
 Source = "https://github.com/edamlabs/esteward"
 Issues = "https://github.com/edamlabs/esteward/issues"
 
+##### IDENTITY #####
+### What this repository is, in EDamLabs' taxonomy (README · Identity); esteward's drift module checks it.
+[tool.edamlabs]
+kind = "lib"
+family = "infra"
+
 ##### DEPS #####
 [dependency-groups]
 lint = [

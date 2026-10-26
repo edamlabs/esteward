@@ -7,8 +7,8 @@ incident** that closes itself when the incident clears. No pull request waits fo
 | Verdict | Means | Lands as |
 |---|---|---|
 | 🟢 ok | healthy | a row in the status issue |
-| 🔵 watch | worth knowing, nothing to do (stale, dormant, unmaintained transitive) | a row in the status issue |
-| 🟡 act | a deterministic action exists (a fixed version of a vulnerable package) | a row; the action module carries it out |
+| 🔵 watch | worth knowing, nothing to do (stale, dormant, unmaintained transitive, blocked upstream) | a row in the status issue |
+| 🟡 act | a deterministic action exists (a fixed version of a vulnerable package) | a row; with `--act`, a self-merging PR — or a downgraded verdict explaining why it cannot |
 | 🔴 escalate | a human decision (archived dependency, license change, phantom action pin) | its own issue, deduplicated by key |
 
 ## Identity
@@ -48,6 +48,19 @@ The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eag
 More modules (upstream, release, docs, community) follow the same contract: a fleet entry in, a
 `Report` out.
 
+## Act
+
+With `--act`, the engine carries out the `act` findings whose fix is a **lockfile-only** bump: the
+ecosystem's solver (`cargo update --precise` / `uv lock --upgrade-package`) runs in a fresh checkout, the
+bumped lockfile is re-parsed as the evidence, and the change lands as one PR per finding key
+(`esteward/act/<key-slug>`) that merges itself when every required check passes. Re-runs update the open
+PR instead of duplicating it, and the status row links it.
+
+When the solver cannot reach the fix, the reverse dependency tree (`cargo tree -i` / `uv tree --invert`)
+decides: an intermediate package pinning the vulnerable range downgrades the finding to
+`watch · blocked upstream` with the chain as evidence (`zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`); the
+project's own manifest blocking the fix escalates, since that range is a human decision.
+
 ## The fleet
 
 One file per project, `fleet/<repo>.toml`:
@@ -81,7 +94,7 @@ with the `eself-maintenance` app token scoped to each project's repository.
 ```bash
 make check                        # lint, types, import contracts, tests at 100 % coverage
 make run P=etrafilatura           # dry run with your gh token: verdicts on screen, nothing published
-uv run esteward run etrafilatura --publish   # what the fleet job does
+uv run esteward run etrafilatura --act --publish   # what the fleet job does
 ```
 
 Decisions and their evidence: [`docs/decisions.md`](docs/decisions.md).

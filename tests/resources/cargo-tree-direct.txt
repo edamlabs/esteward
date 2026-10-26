@@ -1,0 +1,9 @@
+figment v0.10.19
+├── e-voice-core v0.1.0 (/tmp/opencode/evoice-capture/evoice/core)
+│   ├── e-voice-stt v0.1.0 (/tmp/opencode/evoice-capture/evoice/stt)
+│   └── e-voice-tts v0.1.0 (/tmp/opencode/evoice-capture/evoice/tts)
+└── e-voice-stt v0.1.0 (/tmp/opencode/evoice-capture/evoice/stt)
+[dev-dependencies]
+├── e-voice-core v0.1.0 (/tmp/opencode/evoice-capture/evoice/core) (*)
+├── e-voice-stt v0.1.0 (/tmp/opencode/evoice-capture/evoice/stt)
+└── e-voice-tts v0.1.0 (/tmp/opencode/evoice-capture/evoice/tts)

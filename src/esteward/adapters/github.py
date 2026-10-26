@@ -8,12 +8,19 @@ from urllib.parse import quote
 import wreq
 
 from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, UpdateIssue
+from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
 from esteward.models.signal import RepositorySignal
 
 API_VERSION: Final = "2022-11-28"
 JSON: Final = "application/vnd.github+json"
 RAW: Final = "application/vnd.github.raw+json"
 ABSENT: Final = frozenset({HTTPStatus.NOT_FOUND, HTTPStatus.UNPROCESSABLE_ENTITY})
+### A merged act PR is a squash: the branch is esteward's, its one commit is the whole change.
+AUTOMERGE: Final = (
+    "mutation($node: ID!) {"
+    " enablePullRequestAutoMerge(input: {pullRequestId: $node, mergeMethod: SQUASH}) { clientMutationId }"
+    " }"
+)
 ### A renamed or transferred repository answers 301/307 with its new API location; followed once.
 MOVED: Final = frozenset(
     {HTTPStatus.MOVED_PERMANENTLY, HTTPStatus.FOUND, HTTPStatus.TEMPORARY_REDIRECT, HTTPStatus.PERMANENT_REDIRECT}
@@ -55,16 +62,55 @@ class GithubAdapter:
                 response.raise_for_status()
                 return response
 
-    async def _common_send(self, method: wreq.Method, path: str, payload: dict[str, Any]) -> None:
+    async def _common_send(self, method: wreq.Method, path: str, payload: dict[str, Any]) -> wreq.Response:
         """A write to the API; any non-2xx raises."""
         response = await self._client.request(
             method, f"{self._api}{path}", headers=self._headers | {"Accept": JSON}, json=payload
         )
         response.raise_for_status()
+        return response
+
+    async def _common_graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        """One GraphQL call; GitHub answers errors in a 200, so the errors array is the failure."""
+        response = await self._client.post(
+            f"{self._api}/graphql", headers=self._headers, json={"query": query, "variables": variables}
+        )
+        response.raise_for_status()
+        payload = await response.json()
+        match payload.get("errors"):
+            case None:
+                return payload["data"]
+            case errors:
+                message = f"GitHub GraphQL: {errors[0]['message']}"
+                raise ValueError(message)
 
     @staticmethod
     def _common_moment(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value) if value else None
+
+    @staticmethod
+    def _pull_build(item: dict[str, Any]) -> Pull:
+        return Pull(
+            number=item["number"],
+            node=item["node_id"],
+            branch=item["head"]["ref"],
+            body=item.get("body") or "",
+            automerge=item.get("auto_merge") is not None,
+            url=item["html_url"],
+        )
+
+    async def _apply_automerge(self, node: str) -> None:
+        """Squash auto-merge on one pull request: it merges itself when every required check passes."""
+        await self._common_graphql(AUTOMERGE, {"node": node})
+
+    async def _apply_base(self, slug: str) -> str:
+        """The base of a new pull request: REST demands it, and the default branch is the only honest answer."""
+        match await self._common_get(f"/repos/{slug}"):
+            case None:
+                message = f"cannot open a pull request: repository {slug} not found"
+                raise ValueError(message)
+            case response:
+                return (await response.json())["default_branch"]
 
     ############################################################
 
@@ -117,7 +163,16 @@ class GithubAdapter:
         pages = [await self._issues_page(slug, label) for _ in range(LISTING_READS)]
         return tuple(sorted({issue.number: issue for page in pages for issue in page}.values(), key=lambda i: i.number))
 
-    async def apply(self, slug: str, operation: OperationIssue) -> None:
+    async def pull(self, slug: str, branch: str) -> Pull | None:
+        """The open pull request of one head branch; None when the branch has no open pull request."""
+        owner = slug.split("/", 1)[0]
+        match await self._common_get(f"/repos/{slug}/pulls?state=open&head={quote(f'{owner}:{branch}', safe=':/')}"):
+            case None:
+                return None
+            case response:
+                return next((self._pull_build(item) for item in await response.json()), None)
+
+    async def apply(self, slug: str, operation: OperationIssue | OperationPull) -> None:
         """Carry out one planned tracker operation."""
         match operation:
             case CreateIssue(title=title, body=body, labels=labels):
@@ -135,5 +190,16 @@ class GithubAdapter:
                     f"/repos/{slug}/issues/{number}",
                     {"state": "closed", "state_reason": "completed"},
                 )
+            case CreatePull(branch=branch, title=title, body=body):
+                response = await self._common_send(
+                    wreq.Method.POST,
+                    f"/repos/{slug}/pulls",
+                    {"title": title, "head": branch, "base": await self._apply_base(slug), "body": body},
+                )
+                await self._apply_automerge((await response.json())["node_id"])
+            case UpdatePull(number=number, body=body):
+                await self._common_send(wreq.Method.PATCH, f"/repos/{slug}/pulls/{number}", {"body": body})
+            case AutomergePull(node=node):
+                await self._apply_automerge(node)
             case unreachable:
                 assert_never(unreachable)

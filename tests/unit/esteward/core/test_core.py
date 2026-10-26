@@ -4,6 +4,7 @@ import pytest
 import structlog
 
 from esteward.adapters.github import GithubAdapter
+from esteward.adapters.workspace import WorkspaceAdapter
 from esteward.core.lifespan import lifespan
 from esteward.core.logger import setup_logger
 from esteward.core.settings import EnvSettings, Settings
@@ -35,3 +36,4 @@ async def test_lifespan(token: str | None) -> None:
     async with lifespan(Settings(github_token=token)) as runtime:
         assert isinstance(runtime.github, GithubAdapter)
         assert set(runtime.registries) == {"pypi.org", "crates.io"}
+        assert isinstance(runtime.workspace, WorkspaceAdapter)

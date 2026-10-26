@@ -8,11 +8,9 @@ import asyncio
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import groupby
 from typing import Final
 
-from packaging.version import InvalidVersion, Version
-
+from esteward.logic.advisories import grouped_advisories, grouped_fix
 from esteward.logic.lockfile import parse_lockfile
 from esteward.logic.ports import AdvisoryPort, HostPort, RegistryPort
 from esteward.logic.url import host_url, name_url, slug_url
@@ -35,14 +33,6 @@ class RuleDeps[S]:
     verdict: Verdict
     test: Callable[[S, DepsFleet, datetime], bool]
     detail: Callable[[S, DepsFleet], str]
-
-    @staticmethod
-    def ordered(version: str | None) -> tuple[int, Version | str]:
-        """Sort key of a version: comparable releases first, unparsable ones after, by text."""
-        try:
-            return (0, Version(version or ""))
-        except InvalidVersion:
-            return (1, version or "")
 
     @staticmethod
     def older(moment: datetime | None, now: datetime, days: int) -> bool:
@@ -211,12 +201,6 @@ class DepsModule:
         )
 
     @staticmethod
-    def _run_fix(advisories: tuple[AdvisoryPackage, ...]) -> str | None:
-        """The version that clears every advisory of the group: the highest fix, None when one has no fix."""
-        fixes = [advisory.fixed for advisory in advisories]
-        return None if None in fixes else max(fixes, key=RuleDeps.ordered)
-
-    @staticmethod
     def _run_advisory(advisories: tuple[AdvisoryPackage, ...]) -> FindingReport:
         """The advisories of one package version and kind as one finding: one row per package, never per advisory.
 
@@ -224,7 +208,7 @@ class DepsModule:
         """
         first = advisories[0]
         package = first.package
-        fixed = DepsModule._run_fix(advisories)
+        fixed = grouped_fix(advisories)
         ids = ", ".join(advisory.id for advisory in advisories[:LISTED]) + (" …" if len(advisories) > LISTED else "")
         what = f"{first.id}: {first.summary}" if len(advisories) == 1 else f"{len(advisories)} advisories: {ids}"
         return FindingReport(
@@ -236,12 +220,6 @@ class DepsModule:
             detail=what + (f"; fixed in {fixed}" if fixed else ""),
             url=f"https://osv.dev/vulnerability/{first.id}",
         )
-
-    @staticmethod
-    def _run_grouped(advisories: tuple[AdvisoryPackage, ...]) -> tuple[tuple[AdvisoryPackage, ...], ...]:
-        """Advisories grouped by package version and kind, in a stable order."""
-        ordered = sorted(advisories, key=lambda a: (a.package.name, a.package.version, a.kind, a.id))
-        return tuple(tuple(group) for _, group in groupby(ordered, key=lambda a: (a.package, a.kind)))
 
     ############################################################
 
@@ -259,6 +237,6 @@ class DepsModule:
             generated=self._now,
             findings=(
                 *(finding for task in watched for finding in task.result()),
-                *(self._run_advisory(group) for group in self._run_grouped(advisories)),
+                *(self._run_advisory(group) for group in grouped_advisories(advisories)),
             ),
         )

@@ -16,6 +16,7 @@ from rich.table import Table
 from esteward.core.lifespan import RuntimeLifespan, lifespan
 from esteward.core.settings import settings as st
 from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDashboard
+from esteward.logic.modules.act import ActModule
 from esteward.logic.modules.deps import DepsModule
 from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.security import SecurityModule
@@ -50,14 +51,22 @@ def _run_table(reports: tuple[Report, ...]) -> Table:
 
 
 async def _run_modules(
-    fleet: Fleet, modules: tuple[ModuleFleet, ...], *, publish: bool
+    fleet: Fleet, modules: tuple[ModuleFleet, ...], *, publish: bool, act: bool
 ) -> tuple[tuple[Report, ...], tuple[OperationIssue, ...]]:
-    """Every selected module concurrently, then the tracker operations they call for, applied when publishing."""
+    """Every selected module concurrently, the act stage over the deps report, then the tracker operations."""
     now = datetime.now(UTC)
     async with lifespan(st) as rt:
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(MODULES[module](rt, now).run(fleet)) for module in modules]
         reports = tuple(task.result() for task in tasks)
+        reports = tuple(
+            [
+                (await ActModule(rt.workspace, rt.advisories, rt.github, publish=publish).run(fleet, report))
+                if act and report.module == ModuleFleet.DEPS
+                else report
+                for report in reports
+            ]
+        )
         dashboard, escalations = await asyncio.gather(
             rt.github.issues(fleet.repo, DASHBOARD_LABEL), rt.github.issues(fleet.repo, ESCALATION_LABEL)
         )
@@ -80,6 +89,7 @@ def run(
     project: str,
     *,
     module: tuple[ModuleFleet, ...] = (),
+    act: bool = False,
     publish: bool = False,
     report_dir: Path | None = None,
 ) -> None:
@@ -88,14 +98,20 @@ def run(
     Args:
         project: Fleet entry name (the TOML file stem).
         module: Restrict the run to these modules; default: every module the entry enables.
+        act: Carry out the deps module's fixable findings: one self-merging PR per lockfile-only bump.
         publish: Apply the dashboard and escalation operations to the project's tracker.
         report_dir: Write one `<module>.json` report per module there.
     """
     fleet = Fleet.load(st.fleet_dir / f"{project}.toml")
     selected = tuple(m for m in fleet.modules if not module or m in module)
-    reports, operations = asyncio.run(_run_modules(fleet, selected, publish=publish))
+    reports, operations = asyncio.run(_run_modules(fleet, selected, publish=publish, act=act))
     _run_write(report_dir, reports)
     Console().print(_run_table(reports))
     log.info(
-        "run_done", repo=fleet.repo, modules=[str(m) for m in selected], operations=len(operations), published=publish
+        "run_done",
+        repo=fleet.repo,
+        modules=[str(m) for m in selected],
+        act=act,
+        operations=len(operations),
+        published=publish,
     )

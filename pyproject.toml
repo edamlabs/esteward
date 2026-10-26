@@ -102,7 +102,8 @@ ignore = ["E501", "ISC001", "PLR0913", "TC001", "TC002", "TC003"]
 
 [tool.ruff.lint.per-file-ignores]
 ### pytest injects fixtures positionally: a test asks for as many as it needs.
-"tests/**" = ["S101", "S106", "PLR2004", "PLR0917", "ARG", "FBT"]
+### git fixtures shell out to the real binary with fixed argv: bare remotes are seeded by subprocess.
+"tests/**" = ["S101", "S106", "S603", "S607", "PLR2004", "PLR0917", "ARG", "FBT"]
 ### rule tables share one signature `(signal, settings, now)`: a rule ignoring an argument is expected.
 "src/esteward/logic/modules/deps.py" = ["ARG005"]
 

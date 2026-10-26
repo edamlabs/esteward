@@ -106,3 +106,14 @@ a lib today, an eager product can be either.
 
 **Rejected.** One combined category (conflates delivery with nature); PyPI classifiers (no vocabulary for either
 axis); declaring identity only in the fleet (the repository would not say what it is).
+
+### 2026-10-26 · One finding per package, not per advisory
+
+**Decision.** The deps module reports the advisories of one package version and kind as a single finding: the
+count, the first five ids, and the version that clears them all (the highest fix; none when one advisory has no
+fix, which escalates the package). The incident key is `deps:advisory:<kind>:<package>@<version>`.
+
+**Evidence.** e-serde's lockfile carried 44 Pillow advisories: 44 rows of one fact ("upgrade Pillow") in the status
+issue. One row per package keeps the dashboard readable and the action single.
+
+**Rejected.** One finding per advisory (noise); dropping advisory ids (the evidence would leave the dashboard).

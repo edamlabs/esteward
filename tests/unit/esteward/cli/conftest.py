@@ -11,7 +11,8 @@ SHA = "c" * 40
 ENTRY = """
 repo = "edamlabs/project"
 kind = "lib"
-modules = ["deps", "security"]
+family = "binding"
+modules = ["deps", "security", "drift"]
 
 [deps]
 lockfiles = ["uv.lock"]
@@ -69,6 +70,9 @@ def world(httpserver: HTTPServer, resources: Path) -> HTTPServer:
         f"steps:\n  - uses: owner/action@{SHA}\n"
     )
     httpserver.expect_request(f"/repos/owner/action/commits/{SHA}").respond_with_data("", status=422)
+    httpserver.expect_request("/repos/edamlabs/project/contents/pyproject.toml").respond_with_data(
+        '[tool.edamlabs]\nkind = "lib"\nfamily = "binding"\n'
+    )
     httpserver.expect_request("/repos/edamlabs/project/issues", method="GET").respond_with_json([])
     httpserver.expect_request("/repos/edamlabs/project/issues", method="POST").respond_with_json({}, status=201)
     return httpserver

@@ -7,8 +7,9 @@ from datetime import datetime
 import pytest
 
 from esteward.logic.modules.deps import DepsModule
+from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.security import SecurityModule
-from esteward.models.fleet import DepsFleet, Fleet, KindFleet, ModuleFleet, SecurityFleet, WatchFleet
+from esteward.models.fleet import DepsFleet, FamilyFleet, Fleet, KindFleet, ModuleFleet, SecurityFleet, WatchFleet
 from esteward.models.package import AdvisoryPackage, EcosystemPackage, KindPackage, LockedPackage
 from esteward.models.signal import PackageSignal, RepositorySignal
 
@@ -93,6 +94,7 @@ def fleet(watch: WatchFleet) -> Fleet:
     return Fleet(
         repo="edamlabs/project",
         kind=KindFleet.LIB,
+        family=FamilyFleet.BINDING,
         modules=(ModuleFleet.DEPS, ModuleFleet.SECURITY),
         deps=DepsFleet(lockfiles=("uv.lock",), watch=(watch,)),
         security=SecurityFleet(),
@@ -122,3 +124,8 @@ def deps_module(host: FakeHost, registry: FakeRegistry, advisories: FakeAdvisori
 @pytest.fixture
 def security_module(host: FakeHost, now: datetime) -> SecurityModule:
     return SecurityModule(host, now)
+
+
+@pytest.fixture
+def drift_module(host: FakeHost, now: datetime) -> DriftModule:
+    return DriftModule(host, now)

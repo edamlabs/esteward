@@ -162,3 +162,20 @@ idempotence the spec asks for. The operation joins the exhaustive `match` ending
 
 **Rejected.** Fetching pinned state for the planner (an extra read to save one write); pinning at creation
 (the create apply answers no number; a contract change for a first-run cosmetic).
+
+### 2026-10-26 · Agnostic operations live in ops/, and logic lives in its class
+
+**Decision.** A new `ops/` layer holds operations that know no domain; `logic/url.py` becomes `ops/url.py`,
+its three loose functions one class `Url` that parses the URL once and shares the segment cut through a
+private. The same correction falls on the advisory grouping (`GroupAdvisories`) and the reverse-tree chain
+(`ChainBump`). Loose module functions survive only as dispatch handlers (`parse_lockfile`) and entrypoints.
+tach: `ops` depends on nothing; `logic` depends on `models` and `ops`.
+
+**Evidence.** URL decomposition knows nothing of fleets or findings; it sat in the domain layer because that
+is where its only caller lived. One parse per URL, shared by every cut, is the optimisation a class gives and
+three loose functions never did. furl was weighed: the house rule reaches for it on URL treatment except when
+the treatment is very simple, and three stdlib cuts are the simple case.
+
+**Rejected.** Keeping the functions in `logic/` (agnostic operations in the domain layer); furl (a dependency
+for three `urlsplit` cuts); one utility module per helper (the path names the module, the class holds the
+logic).

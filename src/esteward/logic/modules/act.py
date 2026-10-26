@@ -15,8 +15,8 @@ from typing import Final
 
 from msgspec.structs import replace as restruct
 
-from esteward.logic.advisories import grouped_advisories, grouped_fix
-from esteward.logic.bump import BUMPERS, direct_chain, render_chain, tree_chain
+from esteward.logic.advisories import GroupAdvisories
+from esteward.logic.bump import BUMPERS, ChainBump
 from esteward.logic.lockfile import parse_lockfile
 from esteward.logic.modules import deps
 from esteward.logic.ports import AdvisoryPort, TrackerPort, WorkspacePort
@@ -64,16 +64,16 @@ class ActModule:
 
     @staticmethod
     def _tasks_group(
-        group: tuple[AdvisoryPackage, ...], spots: Mapping[LockedPackage, tuple[str, ...]]
+        group: tuple[AdvisoryPackage, ...], fix: str | None, spots: Mapping[LockedPackage, tuple[str, ...]]
     ) -> tuple[tuple[str, TaskAct], ...]:
         """The per-lockfile tasks of one advisory group; empty when the group has no fix."""
-        match grouped_fix(group):
+        match fix:
             case None:
                 return ()
-            case fix:
+            case version:
                 package = group[0].package
                 key = ActModule._task_key(package)
-                return tuple((key, TaskAct(lockfile, package, fix, group)) for lockfile in spots[package])
+                return tuple((key, TaskAct(lockfile, package, version, group)) for lockfile in spots[package])
 
     async def _run_tasks(self, fleet: Fleet) -> Mapping[str, tuple[TaskAct, ...]]:
         """Every fixable vulnerability of the checkout, by finding key, in key order."""
@@ -92,12 +92,13 @@ class ActModule:
             package: tuple(path for path, _ in group) for package, group in groupby(pinned, key=lambda spot: spot[1])
         }
         advisories = await self._advisories.advisories(tuple(spots))
+        grouped = GroupAdvisories(advisories)
         tasks = sorted(
             (
                 task
-                for group in grouped_advisories(advisories)
+                for group in grouped.groups()
                 if group[0].kind is KindPackage.VULNERABILITY
-                for task in ActModule._tasks_group(group, spots)
+                for task in ActModule._tasks_group(group, grouped.fix(group), spots)
             ),
             key=lambda entry: entry[0],
         )
@@ -132,7 +133,8 @@ class ActModule:
         """A fix the solver cannot reach: the reverse tree says whether upstream blocks or the manifest does."""
         bumper = BUMPERS[task.package.ecosystem]
         outcome = await self._workspace.run(bumper.tree(task.lockfile, task.package))
-        match tree_chain(outcome.out) if outcome.rc == 0 else ():
+        chain = ChainBump(outcome.out if outcome.rc == 0 else "")
+        match chain.walk():
             case ():
                 excerpt = next(iter(reason.splitlines()), reason)[:EXCERPT]
                 return restruct(
@@ -140,13 +142,13 @@ class ActModule:
                     verdict=Verdict.ESCALATE,
                     detail=f"{finding.detail}; the solver cannot reach {task.fix}: {excerpt}",
                 )
-            case chain:
-                manifest = direct_chain(chain)
+            case _:
+                manifest = chain.direct()
                 label = "the fix needs a manifest change" if manifest else "blocked upstream"
                 return restruct(
                     finding,
                     verdict=Verdict.ESCALATE if manifest else Verdict.WATCH,
-                    detail=f"{finding.detail}; {label}: {render_chain(chain)}",
+                    detail=f"{finding.detail}; {label}: {chain.render()}",
                 )
 
     @staticmethod

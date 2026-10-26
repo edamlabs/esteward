@@ -1,8 +1,8 @@
-"""URL parts the modules address things by."""
+"""One URL parsed once: the repository slug, the registry host, the package name."""
 
 import pytest
 
-from esteward.logic.url import host_url, name_url, slug_url
+from esteward.ops.url import Url
 
 
 @pytest.mark.parametrize(
@@ -16,4 +16,5 @@ from esteward.logic.url import host_url, name_url, slug_url
     ids=["repo", "repo-subpath", "pypi", "crates"],
 )
 async def test_url_parts(url: str, slug: str, host: str, name: str) -> None:
-    assert (slug_url(url), host_url(url), name_url(url)) == (slug, host, name)
+    parsed = Url(url)
+    assert (parsed.slug(), parsed.host(), parsed.name()) == (slug, host, name)

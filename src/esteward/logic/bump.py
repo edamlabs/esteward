@@ -98,51 +98,67 @@ BUMPERS: Final[Mapping[EcosystemPackage, type[CargoBump] | type[UvBump]]] = Mapp
 )
 
 
-def parse_node(line: str) -> NodeBump | None:
-    """One tree line as a node; blanks, section headers and prose (errors) are None."""
-    content = line.lstrip(GLYPHS)
-    depth = (len(line) - len(content)) // 4
-    match content.split(" ", 2):
-        case [name, version, suffix] if version.startswith("v"):
-            return NodeBump(name, version[1:], depth, suffix.startswith(MEMBER_PREFIXES))
-        case [name, version] if version.startswith("v"):
-            return NodeBump(name, version[1:], depth)
-        case _:
-            return None
+class ChainBump:
+    """The reverse dependency tree of a solver failure: parsed once into its first-child chain.
 
-
-def parse_tree(text: str) -> tuple[NodeBump, ...]:
-    """Every node of a reverse dependency tree, in output order."""
-    return tuple(node for line in text.splitlines() if (node := parse_node(line)) is not None)
-
-
-def tree_chain(text: str) -> tuple[NodeBump, ...]:
-    """The first-child chain from the root: stops at the first workspace member, else at the first leaf.
-
-    A node at the current depth or above closes the walked subtree; a first occurrence is never
-    deduplicated, so the chain followed here is always the fully rendered one.
+    The walk stops at the first workspace member, else at the first leaf; a node at the current depth or
+    above closes the walked subtree, and a first occurrence is never deduplicated, so the chain followed
+    here is always the fully rendered one.
     """
 
-    def descend(
-        state: tuple[tuple[NodeBump, ...], int, bool], node: NodeBump
-    ) -> tuple[tuple[NodeBump, ...], int, bool]:
-        chain, depth, done = state
-        return (
-            state
-            if done or node.depth <= depth
-            else ((*chain, node), node.depth, node.member)
-            if node.depth == depth + 1
-            else state
-        )
+    __slots__ = ("_chain",)
 
-    return reduce(descend, parse_tree(text), ((), -1, False))[0]
+    def __init__(self, text: str) -> None:
+        self._chain = ChainBump._common_walk(ChainBump._common_nodes(text))
 
+    ##### PRIVATE #####
 
-def render_chain(chain: tuple[NodeBump, ...]) -> str:
-    """The chain as status text: `zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`; a member keeps its name only."""
-    return " ← ".join(node.name if node.member else f"{node.name} {node.version}" for node in chain)
+    @staticmethod
+    def _common_node(line: str) -> NodeBump | None:
+        """One tree line as a node; blanks, section headers and prose (errors) are None."""
+        content = line.lstrip(GLYPHS)
+        depth = (len(line) - len(content)) // 4
+        match content.split(" ", 2):
+            case [name, version, suffix] if version.startswith("v"):
+                return NodeBump(name, version[1:], depth, suffix.startswith(MEMBER_PREFIXES))
+            case [name, version] if version.startswith("v"):
+                return NodeBump(name, version[1:], depth)
+            case _:
+                return None
 
+    @staticmethod
+    def _common_nodes(text: str) -> tuple[NodeBump, ...]:
+        """Every node of the tree, in output order."""
+        return tuple(node for line in text.splitlines() if (node := ChainBump._common_node(line)) is not None)
 
-def direct_chain(chain: tuple[NodeBump, ...]) -> bool:
-    """Whether the project itself is the first dependent: the fix belongs to its manifest, not to upstream."""
-    return len(chain) < DIRECT_LEN
+    @staticmethod
+    def _common_walk(nodes: tuple[NodeBump, ...]) -> tuple[NodeBump, ...]:
+        def descend(
+            state: tuple[tuple[NodeBump, ...], int, bool], node: NodeBump
+        ) -> tuple[tuple[NodeBump, ...], int, bool]:
+            chain, depth, done = state
+            return (
+                state
+                if done or node.depth <= depth
+                else ((*chain, node), node.depth, node.member)
+                if node.depth == depth + 1
+                else state
+            )
+
+        return reduce(descend, nodes, ((), -1, False))[0]
+
+    ############################################################
+
+    ##### PUBLIC #####
+
+    def walk(self) -> tuple[NodeBump, ...]:
+        """The chain of dependents, from the vulnerable package to the project or the member that pins it."""
+        return self._chain
+
+    def render(self) -> str:
+        """The chain as status text: `zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`; a member keeps its name only."""
+        return " ← ".join(node.name if node.member else f"{node.name} {node.version}" for node in self._chain)
+
+    def direct(self) -> bool:
+        """Whether the project itself is the first dependent: the fix belongs to its manifest, not to upstream."""
+        return len(self._chain) < DIRECT_LEN

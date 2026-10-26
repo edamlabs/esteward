@@ -10,15 +10,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
 
-from esteward.logic.advisories import grouped_advisories, grouped_fix
+from esteward.logic.advisories import GroupAdvisories
 from esteward.logic.lockfile import parse_lockfile
 from esteward.logic.ports import AdvisoryPort, HostPort, RegistryPort
-from esteward.logic.url import host_url, name_url, slug_url
 from esteward.models.fleet import DepsFleet, Fleet, WatchFleet
 from esteward.models.package import AdvisoryPackage, KindPackage, LockedPackage
 from esteward.models.report import FindingReport, Report
 from esteward.models.signal import PackageSignal, RepositorySignal
 from esteward.models.verdict import Verdict
+from esteward.ops.url import Url
 
 MODULE: Final = "deps"
 GONE_STATUSES: Final = frozenset({"archived", "quarantined", "deprecated"})
@@ -136,7 +136,7 @@ class DepsModule:
             case None:
                 return ()
             case url:
-                match await self._host.repository(slug_url(url)):
+                match await self._host.repository(Url(url).slug()):
                     case None:
                         return self._run_vanished(watch, "repository", url)
                     case signal:
@@ -148,7 +148,8 @@ class DepsModule:
             case None:
                 return ()
             case url:
-                match await self._registries[host_url(url)].package(name_url(url)):
+                page = Url(url)
+                match await self._registries[page.host()].package(page.name()):
                     case None:
                         return self._run_vanished(watch, "package", url)
                     case signal:
@@ -201,14 +202,13 @@ class DepsModule:
         )
 
     @staticmethod
-    def _run_advisory(advisories: tuple[AdvisoryPackage, ...]) -> FindingReport:
+    def _run_advisory(advisories: tuple[AdvisoryPackage, ...], fixed: str | None) -> FindingReport:
         """The advisories of one package version and kind as one finding: one row per package, never per advisory.
 
         Fixable vulnerabilities act, any unfixable one escalates the package, unmaintained notices are watched.
         """
         first = advisories[0]
         package = first.package
-        fixed = grouped_fix(advisories)
         ids = ", ".join(advisory.id for advisory in advisories[:LISTED]) + (" …" if len(advisories) > LISTED else "")
         what = f"{first.id}: {first.summary}" if len(advisories) == 1 else f"{len(advisories)} advisories: {ids}"
         return FindingReport(
@@ -231,12 +231,13 @@ class DepsModule:
             watched = [group.create_task(self._run_watch(watch, fleet.deps)) for watch in fleet.deps.watch]
             locked = group.create_task(self._run_locked(fleet))
         advisories = await self._advisories.advisories(locked.result())
+        grouped = GroupAdvisories(advisories)
         return Report(
             repo=fleet.repo,
             module=MODULE,
             generated=self._now,
             findings=(
                 *(finding for task in watched for finding in task.result()),
-                *(self._run_advisory(group) for group in grouped_advisories(advisories)),
+                *(self._run_advisory(group, grouped.fix(group)) for group in grouped.groups()),
             ),
         )

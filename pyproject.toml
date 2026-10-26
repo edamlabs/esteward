@@ -23,6 +23,7 @@ dependencies = [
     "beartype>=0.22.9",
     "cyclopts>=4.25.3",
     "msgspec>=0.21",
+    "packaging>=25",
     "pydantic-settings>=2.6",
     "rich>=14.0",
     "structlog>=26.1",

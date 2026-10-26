@@ -1,5 +1,6 @@
 """OSV adapter on the wire: batch ids, one detail per advisory, kinds and fixes read as OSV publishes them."""
 
+import pytest
 from pytest_httpserver import HTTPServer
 
 from esteward.adapters.osv import OsvAdapter
@@ -66,3 +67,39 @@ async def test_advisories_none(httpserver: HTTPServer, osv: OsvAdapter) -> None:
     httpserver.expect_request("/querybatch", method="POST").respond_with_json({"results": [{}]})
     assert await osv.advisories((URLLIB3,)) == ()
     assert await osv.advisories(()) == ()
+
+
+@pytest.mark.parametrize(
+    ("version", "events", "fixed"),
+    [
+        (
+            "1.0.9",
+            [{"introduced": "0.0.0-0"}, {"fixed": "0.26.11"}, {"introduced": "0.26.12-0"}, {"fixed": "1.0.10"}],
+            "1.0.10",
+        ),
+        (
+            "0.26.12",
+            [{"introduced": "0.0.0-0"}, {"fixed": "0.26.11"}, {"introduced": "0.26.12-0"}, {"fixed": "1.0.10"}],
+            "1.0.10",
+        ),
+        ("3.0.0", [{"introduced": "0"}, {"fixed": "2.0.0"}, {"introduced": "3.0.0"}], None),
+        ("not-a-version", [{"introduced": "0"}, {"fixed": "2.0.0"}], "2.0.0"),
+        ("1.0.0", [{"introduced": "0"}, {"last_affected": "1.5.0"}], None),
+    ],
+    ids=["second-branch", "semver-lowest-prerelease", "open-interval", "unparsable", "last-affected"],
+)
+async def test_advisories_fixed_branch(
+    httpserver: HTTPServer, osv: OsvAdapter, version: str, events: list[dict[str, str]], fixed: str | None
+) -> None:
+    locked = LockedPackage(EcosystemPackage.CRATES, "webpki-roots", version)
+    httpserver.expect_request("/querybatch", method="POST").respond_with_json({"results": [{"vulns": [{"id": "R-1"}]}]})
+    httpserver.expect_request("/vulns/R-1").respond_with_json(
+        {
+            "id": "R-1",
+            "affected": [
+                {"package": {"name": "webpki-roots", "ecosystem": "crates.io"}, "ranges": [{"events": events}]}
+            ],
+        }
+    )
+    (advisory,) = await osv.advisories((locked,))
+    assert advisory.fixed == fixed

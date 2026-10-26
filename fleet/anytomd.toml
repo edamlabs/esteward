@@ -1,0 +1,25 @@
+# Maintenance contract of edamlabs/anytomd (moved from damvolkov/anytomd on 2026-10-26).
+repo = "edamlabs/anytomd"
+kind = "lib"
+modules = ["deps", "security"]
+
+[deps]
+lockfiles = ["uv.lock", "Cargo.lock"]
+
+[[deps.watch]]
+name = "anytomd-rs"
+repo = "https://github.com/developer0hye/anytomd-rs"
+registry = "https://crates.io/crates/anytomd"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "pyo3"
+repo = "https://github.com/PyO3/pyo3"
+registry = "https://crates.io/crates/pyo3"
+license = "MIT OR Apache-2.0"
+
+[[deps.watch]]
+name = "tokio"
+repo = "https://github.com/tokio-rs/tokio"
+registry = "https://crates.io/crates/tokio"
+license = "MIT"

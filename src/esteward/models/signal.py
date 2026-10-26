@@ -24,3 +24,11 @@ class PackageSignal:
     status: str
     license: str | None
     yanked: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CommitSignal:
+    """One commit as its host reports it: the subject line and the moment it landed."""
+
+    subject: str
+    committed: datetime

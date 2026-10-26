@@ -114,6 +114,18 @@ class WorkspaceAdapter:
         file = self._common_checked() / PurePosixPath(path)
         return file.read_text(encoding="utf-8") if file.is_file() else None
 
+    async def write(self, path: str, text: str) -> None:
+        """Write one file of the checkout; the workspace is disposable, so the write needs no atomic dance."""
+        file = self._common_checked() / PurePosixPath(path)
+        file.write_text(text, encoding="utf-8")
+
+    async def tag(self, name: str, rev: str) -> None:
+        """Tag one revision and push the tag: the repository's own release flow publishes it."""
+        directory = self._common_checked()
+        await self._common_git(("fetch", "--quiet", "origin", rev), directory)
+        await self._common_git(("tag", name, rev), directory)
+        await self._common_git(("push", "--quiet", "origin", f"refs/tags/{name}"), directory)
+
     async def commit(self, branch: str, message: str) -> bool:
         """Branch from the current base, stage everything, commit; whether the checkout had changed."""
         directory = self._common_checked()

@@ -19,6 +19,7 @@ from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDa
 from esteward.logic.modules.act import ActModule
 from esteward.logic.modules.deps import DepsModule
 from esteward.logic.modules.drift import DriftModule
+from esteward.logic.modules.release import ReleaseModule, ReleaseStage
 from esteward.logic.modules.security import SecurityModule
 from esteward.models.fleet import Fleet, ModuleFleet
 from esteward.models.issue import OperationIssue
@@ -38,6 +39,7 @@ MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], Runner
         ModuleFleet.DEPS: lambda rt, now: DepsModule(rt.github, rt.registries, rt.advisories, now, st.concurrency),
         ModuleFleet.SECURITY: lambda rt, now: SecurityModule(rt.github, now, st.concurrency),
         ModuleFleet.DRIFT: lambda rt, now: DriftModule(rt.github, now),
+        ModuleFleet.RELEASE: lambda rt, now: ReleaseModule(rt.github, rt.github, now),
     }
 )
 
@@ -50,22 +52,42 @@ def _run_table(reports: tuple[Report, ...]) -> Table:
     return table
 
 
+async def _run_stages(
+    rt: RuntimeLifespan,
+    fleet: Fleet,
+    reports: tuple[Report, ...],
+    *,
+    act: bool,
+    release: bool,
+    publish: bool,
+    now: datetime,
+) -> tuple[Report, ...]:
+    """The stages that carry out the reports' act findings: act over deps, release over release."""
+    acted = [
+        (await ActModule(rt.workspace, rt.advisories, rt.github, publish=publish).run(fleet, report))
+        if act and report.module == ModuleFleet.DEPS
+        else report
+        for report in reports
+    ]
+    released = [
+        (await ReleaseStage(rt.workspace, rt.github, rt.github, now, publish=publish).run(fleet, report))
+        if release and report.module == ModuleFleet.RELEASE
+        else report
+        for report in acted
+    ]
+    return tuple(released)
+
+
 async def _run_modules(
-    fleet: Fleet, modules: tuple[ModuleFleet, ...], *, publish: bool, act: bool
+    fleet: Fleet, modules: tuple[ModuleFleet, ...], *, publish: bool, act: bool, release: bool
 ) -> tuple[tuple[Report, ...], tuple[OperationIssue, ...]]:
-    """Every selected module concurrently, the act stage over the deps report, then the tracker operations."""
+    """Every selected module concurrently, the stages over their reports, then the tracker operations."""
     now = datetime.now(UTC)
     async with lifespan(st) as rt:
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(MODULES[module](rt, now).run(fleet)) for module in modules]
-        reports = tuple(task.result() for task in tasks)
-        reports = tuple(
-            [
-                (await ActModule(rt.workspace, rt.advisories, rt.github, publish=publish).run(fleet, report))
-                if act and report.module == ModuleFleet.DEPS
-                else report
-                for report in reports
-            ]
+        reports = await _run_stages(
+            rt, fleet, tuple(task.result() for task in tasks), act=act, release=release, publish=publish, now=now
         )
         dashboard, escalations = await asyncio.gather(
             rt.github.issues(fleet.repo, DASHBOARD_LABEL), rt.github.issues(fleet.repo, ESCALATION_LABEL)
@@ -90,6 +112,7 @@ def run(
     *,
     module: tuple[ModuleFleet, ...] = (),
     act: bool = False,
+    release: bool = False,
     publish: bool = False,
     report_dir: Path | None = None,
 ) -> None:
@@ -99,12 +122,13 @@ def run(
         project: Fleet entry name (the TOML file stem).
         module: Restrict the run to these modules; default: every module the entry enables.
         act: Carry out the deps module's fixable findings: one self-merging PR per lockfile-only bump.
+        release: Carry out the release module's decisions: the folded version's tag, the due release's PR.
         publish: Apply the dashboard and escalation operations to the project's tracker.
         report_dir: Write one `<module>.json` report per module there.
     """
     fleet = Fleet.load(st.fleet_dir / f"{project}.toml")
     selected = tuple(m for m in fleet.modules if not module or m in module)
-    reports, operations = asyncio.run(_run_modules(fleet, selected, publish=publish, act=act))
+    reports, operations = asyncio.run(_run_modules(fleet, selected, publish=publish, act=act, release=release))
     _run_write(report_dir, reports)
     Console().print(_run_table(reports))
     log.info(
@@ -112,6 +136,7 @@ def run(
         repo=fleet.repo,
         modules=[str(m) for m in selected],
         act=act,
+        release=release,
         operations=len(operations),
         published=publish,
     )

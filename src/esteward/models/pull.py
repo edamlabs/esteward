@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class Pull:
-    """An open pull request as the tracker returns it."""
+    """An open pull request as the tracker returns it; `merge_sha` is set once it has merged."""
 
     number: int
     node: str
@@ -13,6 +13,7 @@ class Pull:
     body: str
     automerge: bool
     url: str
+    merge_sha: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

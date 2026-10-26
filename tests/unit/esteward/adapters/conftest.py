@@ -16,6 +16,15 @@ from esteward.adapters.pypi import PypiAdapter
 from esteward.adapters.workspace import WorkspaceAdapter
 
 AGENT = "esteward-test"
+IDENTITY = "esteward[bot] <eself-maintenance[bot]@users.noreply.github.com>"
+
+
+def git(*argv: str) -> str:
+    """One git command in the fixtures' identity, its stdout."""
+    done = subprocess.run(
+        ("git", "-c", "user.name=test", "-c", "user.email=test@test", *argv), capture_output=True, text=True, check=True
+    )
+    return done.stdout
 
 
 @pytest.fixture

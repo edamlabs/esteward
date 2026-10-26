@@ -9,7 +9,7 @@ import wreq
 
 from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
 from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
-from esteward.models.signal import RepositorySignal
+from esteward.models.signal import CommitSignal, RepositorySignal
 
 API_VERSION: Final = "2022-11-28"
 JSON: Final = "application/vnd.github+json"
@@ -106,6 +106,7 @@ class GithubAdapter:
             body=item.get("body") or "",
             automerge=item.get("auto_merge") is not None,
             url=item["html_url"],
+            merge_sha=item.get("merge_commit_sha"),
         )
 
     async def _apply_automerge(self, node: str) -> None:
@@ -171,6 +172,28 @@ class GithubAdapter:
         """Whether a commit exists in a repository."""
         return await self._common_get(f"/repos/{slug}/commits/{sha}") is not None
 
+    async def tags(self, slug: str) -> tuple[str, ...]:
+        """Every `v*` tag of a repository; empty for an unknown repository."""
+        match await self._common_get(f"/repos/{slug}/git/matching-refs/tags/v?per_page=100"):
+            case None:
+                return ()
+            case response:
+                return tuple(ref["ref"].removeprefix("refs/tags/") for ref in await response.json())
+
+    async def commits(self, slug: str, since: str) -> tuple[CommitSignal, ...]:
+        """The commits between a reference and HEAD, oldest first; empty when the reference is HEAD."""
+        match await self._common_get(f"/repos/{slug}/compare/{quote(since, safe='')}...HEAD"):
+            case None:
+                return ()
+            case response:
+                return tuple(
+                    CommitSignal(
+                        item["commit"]["message"].split("\n", 1)[0],
+                        datetime.fromisoformat(item["commit"]["committer"]["date"]),
+                    )
+                    for item in (await response.json()).get("commits", ())
+                )
+
     async def _issues_page(self, slug: str, label: str) -> tuple[Issue, ...]:
         """One read of the open issues carrying a label, pull requests excluded."""
         match await self._common_get(f"/repos/{slug}/issues?labels={quote(label)}&state=open&per_page=100"):
@@ -196,6 +219,15 @@ class GithubAdapter:
                 return None
             case response:
                 return next((self._pull_build(item) for item in await response.json()), None)
+
+    async def merged(self, slug: str, branch: str) -> Pull | None:
+        """The merged pull request of one head branch, its merge commit included; None when it never merged."""
+        owner = slug.split("/", 1)[0]
+        match await self._common_get(f"/repos/{slug}/pulls?state=closed&head={quote(f'{owner}:{branch}', safe=':/')}"):
+            case None:
+                return None
+            case response:
+                return next((self._pull_build(item) for item in await response.json() if item.get("merged_at")), None)
 
     async def apply(self, slug: str, operation: OperationIssue | OperationPull) -> None:
         """Carry out one planned tracker operation."""

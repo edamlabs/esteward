@@ -29,6 +29,7 @@ class ModuleFleet(StrEnum):
     DEPS = auto()
     SECURITY = auto()
     DRIFT = auto()
+    RELEASE = auto()
 
 
 class WatchFleet(msgspec.Struct, frozen=True, kw_only=True):
@@ -55,6 +56,12 @@ class SecurityFleet(msgspec.Struct, frozen=True, kw_only=True):
     paths: tuple[str, ...] = (".github/workflows",)
 
 
+class ReleaseFleet(msgspec.Struct, frozen=True, kw_only=True):
+    """How long the release policy waits before cutting an ordinary version."""
+
+    unreleased_age_days: int = 14
+
+
 class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     """One project: its repository slug, kind, enabled modules and module settings."""
 
@@ -64,6 +71,7 @@ class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     modules: tuple[ModuleFleet, ...]
     deps: DepsFleet = DepsFleet()
     security: SecurityFleet = SecurityFleet()
+    release: ReleaseFleet = ReleaseFleet()
 
     @classmethod
     def load(cls, path: Path) -> Self:

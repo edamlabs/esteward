@@ -1,0 +1,5 @@
+zip v0.6.6
+└── npyz v0.9.1
+    └── e-voice-tts v0.1.0 (/tmp/opencode/evoice-capture/evoice/tts)
+    [dev-dependencies]
+    └── e-voice-tts v0.1.0 (/tmp/opencode/evoice-capture/evoice/tts)

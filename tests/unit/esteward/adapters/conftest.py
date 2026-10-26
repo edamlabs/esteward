@@ -1,6 +1,9 @@
 """A real HTTP client against a local server: adapters are tested on the wire, no mocks."""
 
+import subprocess
 from collections.abc import Iterator
+from datetime import timedelta
+from pathlib import Path
 
 import pytest
 import wreq
@@ -10,8 +13,45 @@ from esteward.adapters.crates import CratesAdapter
 from esteward.adapters.github import GithubAdapter
 from esteward.adapters.osv import OsvAdapter
 from esteward.adapters.pypi import PypiAdapter
+from esteward.adapters.workspace import WorkspaceAdapter
 
 AGENT = "esteward-test"
+
+
+@pytest.fixture
+def remote(tmp_path: Path) -> Path:
+    """A bare git repository seeded with one file, standing in for the code host: `remote/o/r.git`."""
+    bare = tmp_path / "remote" / "o" / "r.git"
+    bare.parent.mkdir(parents=True)
+    subprocess.run(("git", "init", "--quiet", "--bare", "--initial-branch=main", str(bare)), check=True)
+    seed = tmp_path / "seed"
+    subprocess.run(("git", "clone", "--quiet", str(bare), str(seed)), check=True)
+    (seed / "uv.lock").write_text("original\n", encoding="utf-8")
+    subprocess.run(("git", "-C", str(seed), "add", "-A"), check=True)
+    subprocess.run(
+        (
+            "git",
+            "-C",
+            str(seed),
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@test",
+            "commit",
+            "--quiet",
+            "-m",
+            "seed",
+        ),
+        check=True,
+    )
+    subprocess.run(("git", "-C", str(seed), "push", "--quiet", "origin", "HEAD"), check=True)
+    return tmp_path / "remote"
+
+
+@pytest.fixture
+def workspace(remote: Path, tmp_path: Path) -> WorkspaceAdapter:
+    """An adapter cloning anonymously from the local bare remote."""
+    return WorkspaceAdapter(tmp_path / "work", str(remote / "{slug}.git"), None, timedelta(minutes=1))
 
 
 @pytest.fixture

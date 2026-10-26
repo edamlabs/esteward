@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     user_agent: str = "esteward (+https://github.com/edamlabs/esteward)"
     http_timeout: timedelta = timedelta(seconds=30)
     concurrency: int = 8
+    work_dir: Path = Path(".workspaces")
+    git_remote: str = "https://github.com/{slug}.git"
+    act_timeout: timedelta = timedelta(minutes=10)
 
 
 settings = Settings()

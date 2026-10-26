@@ -117,3 +117,35 @@ fix, which escalates the package). The incident key is `deps:advisory:<kind>:<pa
 issue. One row per package keeps the dashboard readable and the action single.
 
 **Rejected.** One finding per advisory (noise); dropping advisory ids (the evidence would leave the dashboard).
+
+### 2026-10-26 · act executes lockfile-only bumps, one self-merging PR per finding key
+
+**Decision.** `esteward run --act` carries out the fixable vulnerability findings whose fix is a lockfile-only
+bump: `cargo update -p <name>@<locked> --precise <fix>` / `uv lock --upgrade-package <name>==<fix>`, verified by
+re-parsing the lockfile (the fix pinned, the vulnerable version gone), committed to `esteward/act/<key-slug>`,
+pushed, and opened as a PR with squash auto-merge. One branch per finding key makes a re-run idempotent: the PR
+is updated, never duplicated. A bump that needs a manifest range change is out of the slice and escalates.
+
+**Evidence.** Every `act` finding of the fleet today (zip 0.6.6/2.6.1, zstd 0.13.3, zstd-safe ×2 on e-voice;
+zip 8.6.0 on anytomd) is pinned by an upstream range: the solver's failure plus the reverse tree proves it
+without judgement. The lockfile itself is the verification: a solver that reports success without moving it
+escalates instead of pushing.
+
+**Rejected.** LLM-driven repair (a deterministic solver exists for every case of the slice); editing manifests
+(range semantics are a human decision); a sibling act.yml (the status row must link the PR in the same publish
+pass, so run and act share one report).
+
+### 2026-10-26 · Blocked upstream is watch, not escalate
+
+**Decision.** A fix the solver cannot reach because an intermediate package pins the vulnerable range becomes
+`watch`, its detail carrying the reverse dependency chain (`zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`); a fix only
+the project's own manifest blocks escalates. The chain is the first-child walk of `cargo tree -i` /
+`uv tree --invert`: a workspace member at depth 1 means the manifest, an intermediate registry package means
+upstream.
+
+**Evidence.** An escalation opens an issue asking the project to act; against npyz's `zip ^0.6` no downstream
+action exists, so the issue would ask forever — the ask belongs to an upstream draft, and the dashboard row
+keeps the evidence visible. The manifest case is the project's own decision, so it escalates.
+
+**Rejected.** Escalate for both (issues that cannot be acted on train humans to ignore issues); watch for both
+(a manifest block is actionable downstream; staying silent would hide work).

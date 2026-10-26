@@ -1,0 +1,3 @@
+urllib3 v2.8.0
+└── requests v2.34.2
+    └── scratch v0.1.0

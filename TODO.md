@@ -45,7 +45,8 @@ Every repository has the same baseline. Verify it with the commands in § Refere
 Verdicts follow the ladder ok → watch → act → escalate. One status issue per repository lists every finding. Each
 `escalate` becomes its own issue, keyed and self-closing.
 
-**`act` is only reported today: nothing executes it.** That is item 1.
+**`act` executes itself** (`--act`): a lockfile-only vulnerability bump becomes one self-merging PR per finding
+key; a fix the solver cannot reach downgrades to `watch · blocked upstream` with its reverse dependency chain.
 
 ### House rules (non-negotiable)
 
@@ -87,40 +88,13 @@ Verdicts follow the ladder ok → watch → act → escalate. One status issue p
   OpenAI-compatible endpoint).
 - **The org forbids `GITHUB_TOKEN` from creating PRs.** Any job that opens a PR must use the app token, minted with
   `permission-pull-requests: write`.
+- `allow_auto_merge` cannot be turned on through the REST API (PATCH silently ignores it, creation payload too); it
+  is a UI-only setting. Every fleet repository has it on; a new repository needs the toggle before its first act PR.
 - GitHub's labelled issue listing sometimes returns an empty 200, so the adapter unites three reads
   (decisions 2026-10-22).
 - A moved repository answers 301, and wreq does not follow redirects: follow once (decisions 2026-10-26).
 - crates.io rejects requests without a `User-Agent`.
 - PyPI PEP 792 status comes from the simple JSON API (`Accept: application/vnd.pypi.simple.v1+json`).
-
-## 1 · `act` executes itself (L1)
-
-Today a `🟡 act` finding is only a row in the status issue. Make esteward carry it out deterministically: one PR per
-finding key that merges itself on green, or a downgraded verdict that explains why it cannot.
-
-- **Scope, first slice:** vulnerability findings whose fix is a **lockfile-only** bump.
-  - Cargo: `cargo update -p <name>@<locked> --precise <fix>`.
-  - uv: `uv lock --upgrade-package <name>`.
-  - Bumps that need a manifest range change are out of this slice: escalate them.
-- **Where it runs:** a job in `fleet.yml` (or a sibling `act.yml`) that checks out the target repository with the
-  per-repository app token (`contents: write`, `pull-requests: write`), runs the tool and pushes
-  `esteward/act/<key-slug>`.
-  - It opens the PR with the finding in the body and enables auto-merge.
-  - It is idempotent: an open PR for the same key is updated, never duplicated.
-  - The status row links the PR.
-- **When the solver cannot reach the fix:** the finding becomes `watch · blocked upstream`. The detail carries the
-  reverse dependency chain (`cargo tree -i <name>@<version>`), e.g. `zip 0.6.6 ← npyz 0.9.1 ← e-voice-tts`.
-  - Without this, the status issue would ask forever for something nobody downstream can do.
-- **Design:** a new port (e.g. `WorkspacePort`: checkout, run, diff, push, open PR) behind an adapter that shells out
-  to git/cargo/uv. The decision of what to run stays a pure function in `logic/`, unit-tested without I/O.
-- **Check:**
-  - Unit tests at 100 % coverage.
-  - A live dry run on `e-voice`: zstd-sys is already fixed (e-voice #21), so take the next real case, or reproduce on
-    a scratch branch.
-  - The resulting PR merges itself.
-  - `zip` and `zstd*` on e-voice, and `zip 8.6.0` on anytomd, end up as `watch · blocked upstream` with their chain.
-- **Record** the decision in `docs/decisions.md`: why lockfile-only first, and why blocked-upstream is `watch` and
-  not `escalate`.
 
 ## 2 · The status issue is pinned
 
@@ -190,8 +164,8 @@ repositories.
 | e-voice | same zip advisories + zstd RUSTSEC-2026-0391, -0395…-0401 | `zip 0.6.6` ← `npyz 0.9.1` (`^0.6`) ← e-voice-tts | zip 9.0.0, zstd 0.14.3, zstd-safe 8.2.0 | npyz: move to `zip ^9` |
 | e-voice | same | `zip 2.6.1` ← `sherpa-onnx-sys 1.13.8` (build dependency) | same | sherpa-onnx: move the build script's `zip` to 9 |
 
-e-voice never calls `ZipArchive::extract`, the affected path; this is recorded in its CHANGELOG. Once item 1 exists,
-these rows must show as `watch · blocked upstream`.
+e-voice never calls `ZipArchive::extract`, the affected path; this is recorded in its CHANGELOG. The act stage
+(item 1, done) shows these rows as `watch · blocked upstream`.
 
 ## 6 · Housekeeping
 

@@ -11,17 +11,20 @@ from esteward.adapters.crates import CratesAdapter
 from esteward.adapters.github import GithubAdapter
 from esteward.adapters.osv import OsvAdapter
 from esteward.adapters.pypi import PypiAdapter
+from esteward.adapters.workspace import WorkspaceAdapter
 from esteward.core.settings import Settings
 from esteward.logic.ports import RegistryPort
 
 
 @dataclass(frozen=True, slots=True)
 class RuntimeLifespan:
-    """The wired adapters of one run: the code host and tracker, the registries by host, the advisory database."""
+    """The wired adapters of one run: the code host and tracker, the registries by host, the advisory database,
+    and the workspace where the act stage solves bumps."""
 
     github: GithubAdapter
     registries: Mapping[str, RegistryPort]
     advisories: OsvAdapter
+    workspace: WorkspaceAdapter
 
 
 @asynccontextmanager
@@ -39,6 +42,7 @@ async def lifespan(settings: Settings) -> AsyncGenerator[RuntimeLifespan]:
                 }
             ),
             advisories=OsvAdapter(client, settings.osv_api, settings.user_agent, settings.concurrency),
+            workspace=WorkspaceAdapter(settings.work_dir, settings.git_remote, token, settings.act_timeout),
         )
     finally:
         client.close()

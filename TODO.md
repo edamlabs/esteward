@@ -96,7 +96,7 @@ key; a fix the solver cannot reach downgrades to `watch · blocked upstream` wit
 - crates.io rejects requests without a `User-Agent`.
 - PyPI PEP 792 status comes from the simple JSON API (`Accept: application/vnd.pypi.simple.v1+json`).
 
-## 3 · Releases cut themselves (M3, policy = auto)
+## 1 · Releases cut themselves (M3, policy = auto)
 
 Damien chose automatic releases, which are safe while the records exist (tags, changelog, provenance).
 
@@ -120,7 +120,7 @@ Damien chose automatic releases, which are safe while the records exist (tags, c
   - One real automatic patch release, on a repository with pending fixes, lands on PyPI/GHCR with no human step.
   - A unit test covers every branch of the policy.
 
-## 4 · Upstream (M2), docs (M4), community (M5)
+## 2 · Upstream (M2), docs (M4), community (M5)
 
 Each is a module with the same contract: a fleet entry in, a `Report` out, wired in `cli/commands/run.py` `MODULES`.
 
@@ -143,22 +143,7 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
 - **Check:** each module ships with 100 % coverage and a dry run over the whole fleet, with no false `escalate` on
   today's state.
 
-## 5 · Waiting on upstream: issue drafts for Damien
-
-These advisories cannot be fixed downstream. Write each issue text (title, versions, advisory IDs, the minimal
-dependency bump that clears it) and hand it to Damien: the classifier blocks opening issues on third-party
-repositories.
-
-| Our repo | Advisory | Chain | Fixed in | Ask upstream |
-|---|---|---|---|---|
-| anytomd | RUSTSEC-2026-0367/0368/0369 (zip) | `zip 8.6.0` ← anytomd-rs (requires `zip ^8.2`) | zip 9.0.0 | anytomd-rs: allow `zip ^9` (calamine 0.37 already uses 9) |
-| e-voice | same zip advisories + zstd RUSTSEC-2026-0391, -0395…-0401 | `zip 0.6.6` ← `npyz 0.9.1` (`^0.6`) ← e-voice-tts | zip 9.0.0, zstd 0.14.3, zstd-safe 8.2.0 | npyz: move to `zip ^9` |
-| e-voice | same | `zip 2.6.1` ← `sherpa-onnx-sys 1.13.8` (build dependency) | same | sherpa-onnx: move the build script's `zip` to 9 |
-
-e-voice never calls `ZipArchive::extract`, the affected path; this is recorded in its CHANGELOG. The act stage
-(item 1, done) shows these rows as `watch · blocked upstream`.
-
-## 6 · Housekeeping
+## 3 · Housekeeping
 
 - **e-voice pre-push hook depends on host load.** `make coverage` runs the model-backed STT tests with
   `--include-ignored`. Under load (load average 64 on 32 cores from docling-serve) a different timing test failed on
@@ -177,11 +162,11 @@ e-voice never calls `ZipArchive::extract`, the affected path; this is recorded i
   eager series needs an agent at all, now that Renovate and esteward cover them. Record the decision either way.
 - **e-arkhetypo** (`damvolkov/e-arkhetypo`, private tooling stays in e-taxis/e-nous).
   - Another instance is refactoring `core` → `infra` there. Coordinate before touching it.
-  - Not yet exported: the release-PR-with-app-token flow and the changelog fold from item 3 (export once proven in
+  - Not yet exported: the release-PR-with-app-token flow and the changelog fold from item 1 (export once proven in
     two repositories), and per-subproject `.python-version` pins (e-voice `eval/` broke when uv picked CPython 3.15.1,
     where polars 1.44.2 returns `None` from `Series.drop_nulls()`).
 - **Strict checks and own PRs.** Every non-Renovate PR goes `BEHIND` as soon as Renovate merges first. Measure how
-  often over two weeks. If it is frequent, item 1's PR opener should rebase and re-enable auto-merge itself.
+  often over two weeks. If it is frequent, the act stage's PR opener should rebase and re-enable auto-merge itself.
 
 ## Reference
 

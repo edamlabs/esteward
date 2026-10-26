@@ -6,8 +6,8 @@ import pytest
 import wreq
 from pytest_httpserver import HTTPServer
 
-from esteward.adapters.github import GithubAdapter
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, UpdateIssue
+from esteward.adapters.github import PIN, PINNED, GithubAdapter
+from esteward.models.issue import CloseIssue, CreateIssue, Issue, PinIssue, UpdateIssue
 from esteward.models.signal import RepositorySignal
 
 
@@ -83,6 +83,36 @@ async def test_apply(httpserver: HTTPServer, github: GithubAdapter) -> None:
         ("POST", "/repos/o/r/issues/9/comments", {"body": "cleared"}),
         ("PATCH", "/repos/o/r/issues/9", {"state": "closed", "state_reason": "completed"}),
     ]
+
+
+async def test_apply_pin(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    """An unpinned issue is pinned: one GraphQL read of the state, one mutation."""
+    httpserver.expect_request("/graphql", method="POST").respond_with_json(
+        {"data": {"repository": {"issue": {"id": "I_1"}, "pinnedIssues": {"nodes": [{"issue": {"number": 42}}]}}}}
+    )
+    await github.apply("o/r", PinIssue(1))
+    sent = [request.get_json() for request, _ in httpserver.log]
+    assert sent == [
+        {"query": PINNED, "variables": {"owner": "o", "name": "r", "number": 1}},
+        {"query": PIN, "variables": {"id": "I_1"}},
+    ]
+
+
+async def test_apply_pin_already(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    """Pinning is idempotent: an issue already pinned is skipped, no mutation."""
+    httpserver.expect_request("/graphql", method="POST").respond_with_json(
+        {"data": {"repository": {"issue": {"id": "I_1"}, "pinnedIssues": {"nodes": [{"issue": {"number": 1}}]}}}}
+    )
+    await github.apply("o/r", PinIssue(1))
+    assert [request.get_json()["query"] for request, _ in httpserver.log] == [PINNED]
+
+
+async def test_apply_pin_absent_issue(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/graphql", method="POST").respond_with_json(
+        {"data": {"repository": {"issue": None, "pinnedIssues": {"nodes": []}}}}
+    )
+    with pytest.raises(ValueError, match="cannot pin"):
+        await github.apply("o/r", PinIssue(1))
 
 
 async def test_issues_united_across_flaky_reads(httpserver: HTTPServer, github: GithubAdapter) -> None:

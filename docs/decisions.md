@@ -149,3 +149,16 @@ keeps the evidence visible. The manifest case is the project's own decision, so 
 
 **Rejected.** Escalate for both (issues that cannot be acted on train humans to ignore issues); watch for both
 (a manifest block is actionable downstream; staying silent would hide work).
+
+### 2026-10-26 · The status issue is pinned from the plan, skipped at apply when already pinned
+
+**Decision.** `StatusDashboard.plan` emits `PinIssue(kept.number)` on every run whose status issue exists;
+`GithubAdapter` reads `pinnedIssues` over GraphQL and only sends `pinIssue` when the issue is not among them.
+A first run creates the issue and the pin converges on the next run.
+
+**Evidence.** The REST API has neither the pin nor the pinned state — GraphQL is the only read, so the planner
+cannot know the state without fetching it; one read per run at apply time is the cheapest place for the
+idempotence the spec asks for. The operation joins the exhaustive `match` ending in `assert_never`.
+
+**Rejected.** Fetching pinned state for the planner (an extra read to save one write); pinning at creation
+(the create apply answers no number; a contract change for a first-run cosmetic).

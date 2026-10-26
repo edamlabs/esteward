@@ -38,4 +38,11 @@ class CloseIssue:
     comment: str
 
 
-type OperationIssue = CreateIssue | UpdateIssue | CloseIssue
+@dataclass(frozen=True, slots=True)
+class PinIssue:
+    """Pin an issue to its repository; applying it to a pinned issue changes nothing."""
+
+    number: int
+
+
+type OperationIssue = CreateIssue | UpdateIssue | CloseIssue | PinIssue

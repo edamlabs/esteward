@@ -8,7 +8,7 @@ import re
 from collections.abc import Iterable
 from typing import Final
 
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, UpdateIssue
+from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
 from esteward.models.report import FindingReport, Report
 from esteward.models.verdict import Verdict
 
@@ -58,12 +58,16 @@ class StatusDashboard:
         return tuple(CloseIssue(issue.number, f"esteward: duplicate of #{kept.number}.") for issue in duplicates)
 
     def _plan_dashboard(self, reports: Iterable[Report], current: tuple[Issue, ...]) -> tuple[OperationIssue, ...]:
-        """Rewrite the status issue (the oldest one, duplicates closed), or open it on the first run."""
+        """Rewrite the status issue (the oldest one, duplicates closed), or open it on the first run.
+
+        The status issue is planned pinned on every run; the adapter skips one that already is. A first run
+        creates it and cannot know its number: the pin lands on the next run.
+        """
         body = self.render(reports)
         match sorted(current, key=lambda issue: issue.number):
             case [kept, *duplicates]:
                 rewrite = (UpdateIssue(kept.number, TITLE, body),) if kept.body != body else ()
-                return rewrite + self._plan_duplicates(duplicates, kept)
+                return (*rewrite, PinIssue(kept.number), *self._plan_duplicates(duplicates, kept))
             case _:
                 return (CreateIssue(TITLE, body, (DASHBOARD_LABEL,)),)
 

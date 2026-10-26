@@ -71,3 +71,13 @@ Three united reads bring a false empty from ~12 % to ~0.2 %; convergence repairs
 
 **Rejected.** Trusting one read (duplicates); storing issue numbers outside GitHub (state to keep in sync);
 GitHub search (eventually consistent as well).
+
+### 2026-10-26 · Moved repositories are followed once and watched
+
+**Decision.** The GitHub adapter follows one 301/302/307/308 from a moved repository; the deps module turns a
+moved repository into a `watch` finding naming the new location; a second redirect raises.
+
+**Evidence.** esteward's own fleet entry crashed on `jcrist/msgspec`, which answers 301 since it moved to
+`msgspec/msgspec`: wreq does not follow redirects, and the redirect body has no `archived` field.
+
+**Rejected.** Enabling wreq's redirect following globally (hides the move the fleet should record).

@@ -1,0 +1,28 @@
+# Maintenance contract of edamlabs/esteward: the engine watches itself.
+repo = "edamlabs/esteward"
+kind = "lib"
+modules = ["deps", "security"]
+
+[deps]
+lockfiles = ["uv.lock"]
+
+[[deps.watch]]
+name = "wreq"
+repo = "https://github.com/0x676e67/wreq-python"
+registry = "https://pypi.org/project/wreq/"
+
+[[deps.watch]]
+name = "msgspec"
+repo = "https://github.com/msgspec/msgspec"
+registry = "https://pypi.org/project/msgspec/"
+license = "BSD-3-Clause"
+
+[[deps.watch]]
+name = "cyclopts"
+repo = "https://github.com/BrianPugh/cyclopts"
+registry = "https://pypi.org/project/cyclopts/"
+
+[[deps.watch]]
+name = "beartype"
+repo = "https://github.com/beartype/beartype"
+registry = "https://pypi.org/project/beartype/"

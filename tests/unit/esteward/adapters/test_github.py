@@ -13,13 +13,15 @@ from esteward.models.signal import RepositorySignal
 
 async def test_repository(httpserver: HTTPServer, github: GithubAdapter) -> None:
     httpserver.expect_request("/repos/o/r", headers={"Authorization": "Bearer secret-token"}).respond_with_json(
-        {"archived": True, "pushed_at": "2026-10-01T08:00:00Z"}
+        {"full_name": "o/r", "archived": True, "pushed_at": "2026-10-01T08:00:00Z"}
     )
     assert await github.repository("o/r") == RepositorySignal("o/r", True, datetime(2026, 10, 1, 8, 0, tzinfo=UTC))
 
 
 async def test_repository_anonymous(httpserver: HTTPServer, anonymous_github: GithubAdapter) -> None:
-    httpserver.expect_request("/repos/o/r").respond_with_json({"archived": False, "pushed_at": None})
+    httpserver.expect_request("/repos/o/r").respond_with_json(
+        {"full_name": "O/R", "archived": False, "pushed_at": None}
+    )
     assert await anonymous_github.repository("o/r") == RepositorySignal("o/r", False, None)
     assert "Authorization" not in httpserver.log[0][0].headers
 
@@ -89,3 +91,19 @@ async def test_issues_united_across_flaky_reads(httpserver: HTTPServer, github: 
     httpserver.expect_oneshot_request(listing).respond_with_json([{"number": 13, "title": "s", "body": "b"}])
     httpserver.expect_request(listing).respond_with_json([{"number": 14, "title": "s", "body": "b"}])
     assert [issue.number for issue in await github.issues("o/r", "esteward")] == [13, 14]
+
+
+async def test_repository_moved(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    moved = httpserver.url_for("/repositories/42")
+    httpserver.expect_request("/repos/old/r").respond_with_data("", status=301, headers={"Location": moved})
+    httpserver.expect_request("/repositories/42").respond_with_json(
+        {"full_name": "new/r", "archived": False, "pushed_at": None}
+    )
+    assert await github.repository("old/r") == RepositorySignal("old/r", False, None, moved_to="new/r")
+
+
+async def test_redirect_followed_once(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    loop = httpserver.url_for("/repos/a/b")
+    httpserver.expect_request("/repos/a/b").respond_with_data("", status=301, headers={"Location": loop})
+    with pytest.raises(ValueError, match="redirected twice"):
+        await github.repository("a/b")

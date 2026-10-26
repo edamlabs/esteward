@@ -44,7 +44,7 @@ def local_settings(httpserver: HTTPServer, fleet_dir: Path) -> Settings:
 def world(httpserver: HTTPServer, resources: Path) -> HTTPServer:
     """A healthy dependency, one vulnerable locked package, one phantom pin, no issue yet."""
     httpserver.expect_request("/repos/owner/dep").respond_with_json(
-        {"archived": False, "pushed_at": "2026-10-01T00:00:00Z"}
+        {"full_name": "owner/dep", "archived": False, "pushed_at": "2026-10-01T00:00:00Z"}
     )
     httpserver.expect_request("/pypi/dep/json").respond_with_json(
         {

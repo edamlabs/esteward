@@ -10,7 +10,7 @@ from msgspec.structs import replace as restruct
 
 from esteward.logic.modules.deps import DepsModule
 from esteward.models.fleet import Fleet, WatchFleet
-from esteward.models.package import AdvisoryPackage, KindPackage
+from esteward.models.package import AdvisoryPackage, KindPackage, LockedPackage
 from esteward.models.signal import PackageSignal, RepositorySignal
 from esteward.models.verdict import Verdict
 from tests.unit.esteward.logic.conftest import FakeAdvisories, FakeHost, FakeRegistry
@@ -138,3 +138,38 @@ async def test_run_missing_lockfile(
     report = await deps_module.run(bare)
     assert report.findings == ()
     assert advisories.queried == [()]
+
+
+@pytest.mark.parametrize(
+    ("fixes", "verdict", "detail"),
+    [
+        (("2.0.0", "2.10.0", "2.9.1"), Verdict.ACT, "3 advisories: A-0, A-1, A-2; fixed in 2.10.0"),
+        (("2.0.0", None), Verdict.ESCALATE, "2 advisories: A-0, A-1"),
+        (("2.0.0", "post-fix"), Verdict.ACT, "2 advisories: A-0, A-1; fixed in post-fix"),
+        (tuple(f"1.{i}" for i in range(7)), Verdict.ACT, "7 advisories: A-0, A-1, A-2, A-3, A-4 …; fixed in 1.6"),
+    ],
+    ids=["highest-fix", "one-unfixed-escalates", "unparsable-sorts-last", "listing-truncated"],
+)
+async def test_run_advisories_grouped(
+    host: FakeHost,
+    advisories: FakeAdvisories,
+    deps_module: DepsModule,
+    fleet: Fleet,
+    resources: Path,
+    locked: LockedPackage,
+    fixes: tuple[str | None, ...],
+    verdict: Verdict,
+    detail: str,
+) -> None:
+    bare = restruct(fleet, deps=restruct(fleet.deps, watch=()))
+    host.files["edamlabs/project", "uv.lock"] = (resources / "uv.lock").read_text(encoding="utf-8")
+    advisories.known = tuple(
+        AdvisoryPackage(id=f"A-{i}", package=locked, kind=KindPackage.VULNERABILITY, summary="s", fixed=fix)
+        for i, fix in enumerate(fixes)
+    )
+    (finding,) = (await deps_module.run(bare)).findings
+    assert (finding.verdict, finding.detail, finding.key) == (
+        verdict,
+        detail,
+        "deps:advisory:vulnerability:urllib3@1.26.0",
+    )

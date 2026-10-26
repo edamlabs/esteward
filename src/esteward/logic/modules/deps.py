@@ -8,7 +8,10 @@ import asyncio
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from itertools import groupby
 from typing import Final
+
+from packaging.version import InvalidVersion, Version
 
 from esteward.logic.lockfile import parse_lockfile
 from esteward.logic.ports import AdvisoryPort, HostPort, RegistryPort
@@ -21,6 +24,7 @@ from esteward.models.verdict import Verdict
 
 MODULE: Final = "deps"
 GONE_STATUSES: Final = frozenset({"archived", "quarantined", "deprecated"})
+LISTED: Final = 5
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +35,14 @@ class RuleDeps[S]:
     verdict: Verdict
     test: Callable[[S, DepsFleet, datetime], bool]
     detail: Callable[[S, DepsFleet], str]
+
+    @staticmethod
+    def ordered(version: str | None) -> tuple[int, Version | str]:
+        """Sort key of a version: comparable releases first, unparsable ones after, by text."""
+        try:
+            return (0, Version(version or ""))
+        except InvalidVersion:
+            return (1, version or "")
 
     @staticmethod
     def older(moment: datetime | None, now: datetime, days: int) -> bool:
@@ -199,19 +211,37 @@ class DepsModule:
         )
 
     @staticmethod
-    def _run_advisory(advisory: AdvisoryPackage) -> FindingReport:
-        """An advisory as a finding: fixable vulnerabilities act, unfixable ones escalate, unmaintained is watched."""
-        package = advisory.package
-        fixed = f"; fixed in {advisory.fixed}" if advisory.fixed else ""
+    def _run_fix(advisories: tuple[AdvisoryPackage, ...]) -> str | None:
+        """The version that clears every advisory of the group: the highest fix, None when one has no fix."""
+        fixes = [advisory.fixed for advisory in advisories]
+        return None if None in fixes else max(fixes, key=RuleDeps.ordered)
+
+    @staticmethod
+    def _run_advisory(advisories: tuple[AdvisoryPackage, ...]) -> FindingReport:
+        """The advisories of one package version and kind as one finding: one row per package, never per advisory.
+
+        Fixable vulnerabilities act, any unfixable one escalates the package, unmaintained notices are watched.
+        """
+        first = advisories[0]
+        package = first.package
+        fixed = DepsModule._run_fix(advisories)
+        ids = ", ".join(advisory.id for advisory in advisories[:LISTED]) + (" …" if len(advisories) > LISTED else "")
+        what = f"{first.id}: {first.summary}" if len(advisories) == 1 else f"{len(advisories)} advisories: {ids}"
         return FindingReport(
-            key=f"{MODULE}:advisory:{advisory.id}:{package.name}",
+            key=f"{MODULE}:advisory:{first.kind}:{package.name}@{package.version}",
             module=MODULE,
             subject=f"{package.name} {package.version}",
-            check=advisory.kind,
-            verdict=ADVISORY_VERDICTS[advisory.kind, advisory.fixed is not None],
-            detail=f"{advisory.id}: {advisory.summary}{fixed}",
-            url=f"https://osv.dev/vulnerability/{advisory.id}",
+            check=first.kind,
+            verdict=ADVISORY_VERDICTS[first.kind, fixed is not None],
+            detail=what + (f"; fixed in {fixed}" if fixed else ""),
+            url=f"https://osv.dev/vulnerability/{first.id}",
         )
+
+    @staticmethod
+    def _run_grouped(advisories: tuple[AdvisoryPackage, ...]) -> tuple[tuple[AdvisoryPackage, ...], ...]:
+        """Advisories grouped by package version and kind, in a stable order."""
+        ordered = sorted(advisories, key=lambda a: (a.package.name, a.package.version, a.kind, a.id))
+        return tuple(tuple(group) for _, group in groupby(ordered, key=lambda a: (a.package, a.kind)))
 
     ############################################################
 
@@ -229,6 +259,6 @@ class DepsModule:
             generated=self._now,
             findings=(
                 *(finding for task in watched for finding in task.result()),
-                *(self._run_advisory(advisory) for advisory in advisories),
+                *(self._run_advisory(group) for group in self._run_grouped(advisories)),
             ),
         )

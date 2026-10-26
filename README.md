@@ -13,7 +13,8 @@ incident** that closes itself when the incident clears. No pull request waits fo
 
 ## Identity
 
-Every EDamLabs repository declares what it is in `pyproject.toml`, and its fleet entry repeats it; the `drift`
+Every EDamLabs repository declares what it is in its manifest — `pyproject.toml` `[tool.edamlabs]`, or for a Rust
+project `Cargo.toml` `[package.metadata.edamlabs]` — and its fleet entry repeats it; the `drift`
 module escalates any contradiction.
 
 ```toml

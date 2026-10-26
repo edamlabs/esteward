@@ -28,3 +28,29 @@ async def test_run_identity(
     host.files |= {("edamlabs/project", "pyproject.toml"): manifest} if manifest is not None else {}
     report = await drift_module.run(fleet)
     assert {f.check: f.verdict for f in report.findings} == expected
+
+
+@pytest.mark.parametrize(
+    ("files", "expected", "where"),
+    [
+        ({"Cargo.toml": '[package.metadata.edamlabs]\nkind = "lib"\nfamily = "binding"\n'}, Verdict.OK, "Cargo.toml"),
+        ({"Cargo.toml": '[workspace.metadata.edamlabs]\nkind = "lib"\nfamily = "binding"\n'}, Verdict.OK, "Cargo.toml"),
+        (
+            {
+                "pyproject.toml": '[project]\nname = "x"\n',
+                "Cargo.toml": '[package.metadata.edamlabs]\nkind = "lib"\nfamily = "binding"\n',
+            },
+            Verdict.OK,
+            "Cargo.toml",
+        ),
+        ({"Cargo.toml": '[package]\nname = "x"\n'}, Verdict.ACT, "Cargo.toml [package.metadata.edamlabs]"),
+    ],
+    ids=["cargo-package", "cargo-workspace", "pyproject-without-table-yields", "cargo-without-table"],
+)
+async def test_run_identity_cargo(
+    host: FakeHost, drift_module: DriftModule, fleet: Fleet, files: dict[str, str], expected: Verdict, where: str
+) -> None:
+    host.files |= {("edamlabs/project", name): text for name, text in files.items()}
+    report = await drift_module.run(fleet)
+    assert {f.verdict for f in report.findings} == {expected}
+    assert all(where in f.detail for f in report.findings if f.verdict is Verdict.ACT)

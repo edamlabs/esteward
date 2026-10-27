@@ -18,6 +18,7 @@ from esteward.core.settings import settings as st
 from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDashboard
 from esteward.logic.modules.act import ActModule
 from esteward.logic.modules.deps import DepsModule
+from esteward.logic.modules.docs import DocsModule
 from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.release import ReleaseModule, ReleaseStage
 from esteward.logic.modules.security import SecurityModule
@@ -42,6 +43,7 @@ MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], Runner
         ModuleFleet.DRIFT: lambda rt, now: DriftModule(rt.github, now),
         ModuleFleet.RELEASE: lambda rt, now: ReleaseModule(rt.github, rt.github, now),
         ModuleFleet.UPSTREAM: lambda rt, now: UpstreamModule(rt.github, rt.registries, now),
+        ModuleFleet.DOCS: lambda rt, now: DocsModule(rt.github, rt.site, rt.workspace, now, concurrency=st.concurrency),
     }
 )
 

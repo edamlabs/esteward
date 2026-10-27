@@ -132,11 +132,15 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
   public API diff and the repair stay with the repository's tooling (`make apidiff`, the sync flow). Enabled on
   etrafilatura, anytomd and gliner at today's parity; the live dry run escalates nothing (tokenizers is watch:
   its 1.0.0-rc.3 sits ahead of the stable parity 0.23.2, and gliner's sync flow owns that mirror).
-- **M4 · docs.**
-  - `zensical build --strict` passes on `main`.
-  - The deployed Pages site serves the latest release's version.
-  - No dead external links (deterministic link check, bounded and cached).
-  - Pages: etrafilatura, anytomd, gliner, e-serde, e-voice.
+- **M4 · docs — done (2026-10-27).** The `docs` module runs the repository's own `make docs` (every repo's
+  target builds strict: aligned in the same sweep) in a fresh checkout; probes the Pages site (the changelog
+  page must carry the newest release's version); and checks every external link of `docs/**.md`, bounded
+  (sorted, capped at 250 per run, concurrency-limited) and deduplicated within the run — the escalation
+  issues are the cache across runs, closing themselves when the link lives again. Dead links and failing
+  builds escalate; a missing docs config or a missing release watch. e-voice defers the pages check
+  (`[docs] pages = false`): its versions live per image, and that check follows its per-image release policy.
+  Deploy alignment shipped with it: `docs.yml` added where absent (etrafilatura, anytomd, e-serde), the
+  `DOCS_DEPLOY` gate switched on where the workflow existed inert (gliner, e-voice).
 - **M5 · community.**
   - Deterministic triage of third-party issues and PRs: labels, missing-reproduction requests, stale closing with a
     message.

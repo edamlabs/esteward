@@ -219,3 +219,20 @@ a parity that must be updated by hand belongs beside the thresholds that are.
 **Rejected.** Deriving parity from the locked engine version (Renovate bumps the lock without re-mirroring
 the API; the two move for different reasons); a parity file per repository (a second contract to keep in
 step with the fleet entry).
+
+### 2026-10-27 · The docs module runs `make docs`, and every `make docs` is strict
+
+**Decision.** The engine invokes the repository's own docs target (`make docs`) instead of a hardcoded
+zensical argv; the sweep made every repository's target strict (`--strict` added where missing) and gave the
+three repositories without a deploy workflow the proven `docs.yml` (build with `make docs`, upload the site,
+deploy-pages behind the `DOCS_DEPLOY` gate). e-voice defers the pages-version check until its per-image
+release policy exists.
+
+**Evidence.** gliner builds with a pinned `uvx zensical` and e-voice generates its OpenAPI documents with
+cargo before building: a single hardcoded argv cannot honour both toolchains, while `make docs` is the
+contract each repository already exposes to a workstation. The gates were inert (`DOCS_DEPLOY` unset) and
+two sites had no deploy path at all, which is exactly why three Pages sites served stale versions.
+
+**Rejected.** A hardcoded zensical argv in the engine (fails on the uvx repositories, skips e-voice's
+OpenAPI step); dropping `--strict` from the engine's build (the TODO names the strict build as the check);
+comparing e-voice's Pages against a repository tag (its releases are per image).

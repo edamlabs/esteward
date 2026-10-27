@@ -6,6 +6,7 @@ from http import HTTPStatus
 from typing import Any, Final
 
 import wreq
+from packaging.version import Version
 
 from esteward.models.signal import PackageSignal
 
@@ -34,6 +35,14 @@ class PypiAdapter:
                 response.raise_for_status()
                 return await response.json()
 
+    @staticmethod
+    def _package_newest(release: dict[str, Any]) -> str:
+        """The newest release of any kind, prereleases included; yanked versions only when all are."""
+        releases = release.get("releases", {})
+        live = [version for version, files in releases.items() if any(not file.get("yanked") for file in files)]
+        versions = live or list(releases)
+        return max(versions, key=Version) if versions else release["info"]["version"]
+
     ############################################################
 
     ##### PUBLIC #####
@@ -46,7 +55,7 @@ class PypiAdapter:
         match release:
             case None:
                 return None
-            case {"info": info, "urls": files}:
+            case {"info": info, "urls": files} as release:
                 uploads = [entry["upload_time_iso_8601"] for entry in files]
                 return PackageSignal(
                     name=name,
@@ -55,6 +64,7 @@ class PypiAdapter:
                     status=((simple or {}).get("project-status") or {}).get("status", "active"),
                     license=info.get("license_expression") or info.get("license") or None,
                     yanked=bool(info.get("yanked")),
+                    newest=PypiAdapter._package_newest(release),
                 )
             case other:
                 message = f"unexpected PyPI JSON for {name}: keys {sorted(other)}"

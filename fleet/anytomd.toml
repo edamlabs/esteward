@@ -2,7 +2,7 @@
 repo = "edamlabs/anytomd"
 kind = "lib"
 family = "binding"
-modules = ["deps", "security", "drift", "release"]
+modules = ["deps", "security", "drift", "release", "upstream"]
 
 [deps]
 lockfiles = ["uv.lock", "Cargo.lock"]
@@ -24,3 +24,10 @@ name = "tokio"
 repo = "https://github.com/tokio-rs/tokio"
 registry = "https://crates.io/crates/tokio"
 license = "MIT"
+
+[upstream]
+
+[[upstream.engines]]
+name = "anytomd"
+registry = "https://crates.io/crates/anytomd"
+parity = "1.3.1"

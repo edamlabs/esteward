@@ -2,7 +2,7 @@
 repo = "edamlabs/etrafilatura"
 kind = "lib"
 family = "binding"
-modules = ["deps", "security", "drift", "release"]
+modules = ["deps", "security", "drift", "release", "upstream"]
 
 [deps]
 release_age_days = 540
@@ -44,3 +44,10 @@ name = "charset-normalizer"
 repo = "https://github.com/jawah/charset_normalizer"
 registry = "https://pypi.org/project/charset-normalizer/"
 license = "MIT"
+
+[upstream]
+
+[[upstream.engines]]
+name = "trafilatura"
+registry = "https://crates.io/crates/trafilatura"
+parity = "0.5.0"

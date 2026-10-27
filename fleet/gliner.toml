@@ -2,7 +2,7 @@
 repo = "edamlabs/gliner"
 kind = "service"
 family = "binding"
-modules = ["deps", "security", "drift", "release"]
+modules = ["deps", "security", "drift", "release", "upstream"]
 
 [deps]
 lockfiles = ["Cargo.lock", "tools/export/uv.lock", "tools/train/uv.lock"]
@@ -24,3 +24,20 @@ name = "gliner"
 repo = "https://github.com/urchade/GLiNER"
 registry = "https://pypi.org/project/gliner/"
 license = "Apache-2.0"
+
+[upstream]
+
+[[upstream.engines]]
+name = "ort"
+registry = "https://crates.io/crates/ort"
+parity = "2.0.0-rc.15"
+
+[[upstream.engines]]
+name = "tokenizers"
+registry = "https://crates.io/crates/tokenizers"
+parity = "0.23.2"
+
+[[upstream.engines]]
+name = "gliner"
+registry = "https://pypi.org/project/gliner/"
+parity = "0.2.29"

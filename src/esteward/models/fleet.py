@@ -30,6 +30,7 @@ class ModuleFleet(StrEnum):
     SECURITY = auto()
     DRIFT = auto()
     RELEASE = auto()
+    UPSTREAM = auto()
 
 
 class WatchFleet(msgspec.Struct, frozen=True, kw_only=True):
@@ -62,6 +63,20 @@ class ReleaseFleet(msgspec.Struct, frozen=True, kw_only=True):
     unreleased_age_days: int = 14
 
 
+class EngineFleet(msgspec.Struct, frozen=True, kw_only=True):
+    """An upstream engine a binding mirrors: its registry page and the version its API parity was set at."""
+
+    name: str
+    registry: str
+    parity: str
+
+
+class UpstreamFleet(msgspec.Struct, frozen=True, kw_only=True):
+    """The engines of a binding, as the fleet entry declares them."""
+
+    engines: tuple[EngineFleet, ...] = ()
+
+
 class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     """One project: its repository slug, kind, enabled modules and module settings."""
 
@@ -72,6 +87,7 @@ class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     deps: DepsFleet = DepsFleet()
     security: SecurityFleet = SecurityFleet()
     release: ReleaseFleet = ReleaseFleet()
+    upstream: UpstreamFleet = UpstreamFleet()
 
     @classmethod
     def load(cls, path: Path) -> Self:

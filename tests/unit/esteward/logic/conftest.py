@@ -98,7 +98,7 @@ def healthy_repository(now: datetime) -> RepositorySignal:
 
 @pytest.fixture
 def healthy_package(now: datetime) -> PackageSignal:
-    return PackageSignal("dep", "1.0.0", released_at=now, status="active", license="MIT", yanked=False)
+    return PackageSignal("dep", "1.0.0", released_at=now, status="active", license="MIT", yanked=False, newest="1.0.0")
 
 
 @pytest.fixture

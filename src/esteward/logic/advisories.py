@@ -2,9 +2,10 @@
 
 from itertools import groupby
 
-from packaging.version import InvalidVersion, Version
+from packaging.version import Version
 
 from esteward.models.package import AdvisoryPackage
+from esteward.ops.semver import Semver
 
 
 class GroupAdvisories:
@@ -20,11 +21,8 @@ class GroupAdvisories:
 
     @staticmethod
     def _fix_ordered(version: str | None) -> tuple[int, Version | str]:
-        """Sort key of a version: comparable releases first, unparsable ones after, by text."""
-        try:
-            return (0, Version(version or ""))
-        except InvalidVersion:
-            return (1, version or "")
+        """Sort key of a fix: the highest fix clears the group, and an unparsable one out-ranks every release."""
+        return Semver.rank(version or "")
 
     ############################################################
 

@@ -124,13 +124,14 @@ A version folded but untagged holds the next release (`watch`). Enabled on **etr
 
 Each is a module with the same contract: a fleet entry in, a `Report` out, wired in `cli/commands/run.py` `MODULES`.
 
-- **M2 · upstream.**
-  - For bindings (`family = binding`): the engine's new release, public API diff and parity baseline.
-  - etrafilatura and anytomd already have pieces: `sync.yml`, `maintenance.yml` (Qwen agent with an allowlist),
-    `tools/health.py`, `make apidiff`. esteward should own the detection and leave the repair to the repository's
-    agent.
-  - Watch the engines: `trafilatura` (crate) for etrafilatura, `anytomd` (crate) for anytomd, `ort`/`tokenizers` and
-    the `gliner` PyPI reference for gliner.
+- **M2 · upstream — done (2026-10-27).** The `upstream` module reports one parity row per engine declared in
+  the fleet entry (`[[upstream.engines]]`: name, registry, parity): ok when the parity is the engine's newest
+  release; watch when the engine moved ahead and the repository has a sync or maintenance flow (the agent owns
+  the mirror); escalate when the engine moved ahead and no flow exists (a human sets the parity), when the
+  parity is ahead of the engine (a wrong declaration), or when the registry page is gone. Detection only: the
+  public API diff and the repair stay with the repository's tooling (`make apidiff`, the sync flow). Enabled on
+  etrafilatura, anytomd and gliner at today's parity; the live dry run escalates nothing (tokenizers is watch:
+  its 1.0.0-rc.3 sits ahead of the stable parity 0.23.2, and gliner's sync flow owns that mirror).
 - **M4 · docs.**
   - `zensical build --strict` passes on `main`.
   - The deployed Pages site serves the latest release's version.

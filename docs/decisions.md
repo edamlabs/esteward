@@ -204,3 +204,18 @@ mechanism, drifting — the original TODO's preference, superseded by the centra
 esteward dispatching each repository's release workflow (the mechanism still lives in five places);
 blocking the run until the release PR merges (a twenty-minute poll whose failure mode needs the same
 cross-run state anyway); automating a major release (a breaking marker escalates instead).
+
+### 2026-10-27 · Upstream parity is declared in the fleet entry, not in the repository
+
+**Decision.** The `upstream` module reads each binding's parity baseline from `fleet/<repo>.toml`
+(`[[upstream.engines]]`: name, registry, parity). The repository keeps owning the mirror (its sync flow) and
+the API diff (its `apidiff` tooling); esteward owns only the detection of an engine that moved.
+
+**Evidence.** The repositories hold parity implicitly — etrafilatura's byte-parity goldens are rewritten
+against whichever Python trafilatura is installed, and `apidiff` takes its versions as arguments — so no
+record inside them names the version the API mirrors. The fleet entry is already the maintenance contract;
+a parity that must be updated by hand belongs beside the thresholds that are.
+
+**Rejected.** Deriving parity from the locked engine version (Renovate bumps the lock without re-mirroring
+the API; the two move for different reasons); a parity file per repository (a second contract to keep in
+step with the fleet entry).

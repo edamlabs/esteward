@@ -2,7 +2,7 @@
 repo = "edamlabs/e-serde"
 kind = "lib"
 family = "eager"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "release"]
 
 [deps]
 lockfiles = ["Cargo.lock", "uv.lock"]

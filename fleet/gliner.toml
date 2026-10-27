@@ -2,7 +2,7 @@
 repo = "edamlabs/gliner"
 kind = "service"
 family = "binding"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "release"]
 
 [deps]
 lockfiles = ["Cargo.lock", "tools/export/uv.lock", "tools/train/uv.lock"]

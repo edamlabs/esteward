@@ -11,6 +11,7 @@ from esteward.adapters.crates import CratesAdapter
 from esteward.adapters.github import GithubAdapter
 from esteward.adapters.osv import OsvAdapter
 from esteward.adapters.pypi import PypiAdapter
+from esteward.adapters.site import SiteAdapter
 from esteward.adapters.workspace import WorkspaceAdapter
 from esteward.core.settings import Settings
 from esteward.logic.ports import RegistryPort
@@ -25,6 +26,7 @@ class RuntimeLifespan:
     registries: Mapping[str, RegistryPort]
     advisories: OsvAdapter
     workspace: WorkspaceAdapter
+    site: SiteAdapter
 
 
 @asynccontextmanager
@@ -43,6 +45,7 @@ async def lifespan(settings: Settings) -> AsyncGenerator[RuntimeLifespan]:
             ),
             advisories=OsvAdapter(client, settings.osv_api, settings.user_agent, settings.concurrency),
             workspace=WorkspaceAdapter(settings.work_dir, settings.git_remote, token, settings.act_timeout),
+            site=SiteAdapter(client, settings.user_agent),
         )
     finally:
         client.close()

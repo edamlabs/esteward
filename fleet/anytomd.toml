@@ -2,7 +2,7 @@
 repo = "edamlabs/anytomd"
 kind = "lib"
 family = "binding"
-modules = ["deps", "security", "drift", "release", "upstream"]
+modules = ["deps", "security", "drift", "release", "upstream", "docs"]
 
 [deps]
 lockfiles = ["uv.lock", "Cargo.lock"]

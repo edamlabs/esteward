@@ -2,7 +2,7 @@
 repo = "edamlabs/e-voice"
 kind = "service"
 family = "eager"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "docs"]
 
 [deps]
 lockfiles = ["Cargo.lock", "eval/uv.lock"]
@@ -30,3 +30,6 @@ name = "axum"
 repo = "https://github.com/tokio-rs/axum"
 registry = "https://crates.io/crates/axum"
 license = "MIT"
+
+[docs]
+pages = false

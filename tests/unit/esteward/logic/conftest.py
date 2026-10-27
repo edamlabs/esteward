@@ -54,6 +54,23 @@ class FakeRegistry:
 
 
 @dataclass
+class FakeSite:
+    """A deployed site backed by dictionaries; absent texts answer None like a 404."""
+
+    statuses: dict[str, int] = field(default_factory=dict)
+    texts: dict[str, str] = field(default_factory=dict)
+    asked: list[str] = field(default_factory=list)
+
+    async def status(self, url: str) -> int:
+        self.asked.append(url)
+        return self.statuses.get(url, 200)
+
+    async def text(self, url: str) -> str | None:
+        self.asked.append(url)
+        return self.texts.get(url)
+
+
+@dataclass
 class FakeAdvisories:
     """An advisory database returning whatever concerns the queried packages."""
 
@@ -84,6 +101,11 @@ def host() -> FakeHost:
 @pytest.fixture
 def registry() -> FakeRegistry:
     return FakeRegistry()
+
+
+@pytest.fixture
+def site() -> FakeSite:
+    return FakeSite()
 
 
 @pytest.fixture

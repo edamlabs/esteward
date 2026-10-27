@@ -31,6 +31,7 @@ class ModuleFleet(StrEnum):
     DRIFT = auto()
     RELEASE = auto()
     UPSTREAM = auto()
+    DOCS = auto()
 
 
 class WatchFleet(msgspec.Struct, frozen=True, kw_only=True):
@@ -77,6 +78,12 @@ class UpstreamFleet(msgspec.Struct, frozen=True, kw_only=True):
     engines: tuple[EngineFleet, ...] = ()
 
 
+class DocsFleet(msgspec.Struct, frozen=True, kw_only=True):
+    """Which docs checks apply: repositories without a versioned changelog defer the pages check."""
+
+    pages: bool = True
+
+
 class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     """One project: its repository slug, kind, enabled modules and module settings."""
 
@@ -88,6 +95,7 @@ class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     security: SecurityFleet = SecurityFleet()
     release: ReleaseFleet = ReleaseFleet()
     upstream: UpstreamFleet = UpstreamFleet()
+    docs: DocsFleet = DocsFleet()
 
     @classmethod
     def load(cls, path: Path) -> Self:

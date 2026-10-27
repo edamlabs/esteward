@@ -7,8 +7,15 @@ import wreq
 from pytest_httpserver import HTTPServer
 
 from esteward.adapters.github import PIN, PINNED, GithubAdapter
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, PinIssue, UpdateIssue
+from esteward.models.issue import CloseIssue, CommentIssue, CreateIssue, LabelIssue, PinIssue, UpdateIssue
 from esteward.models.signal import RepositorySignal
+from tests.unit.esteward.adapters.conftest import (
+    ISSUE_BUILT,
+    ISSUE_ITEM,
+    LISTED_PULL,
+    PULL_BUILT,
+    PULL_ITEM,
+)
 
 
 async def test_repository(httpserver: HTTPServer, github: GithubAdapter) -> None:
@@ -62,10 +69,60 @@ async def test_file_tree_commit(httpserver: HTTPServer, github: GithubAdapter) -
 async def test_issues(httpserver: HTTPServer, github: GithubAdapter) -> None:
     httpserver.expect_request(
         "/repos/o/r/issues", query_string="labels=esteward&state=open&per_page=100"
-    ).respond_with_json(
-        [{"number": 1, "title": "t", "body": None}, {"number": 2, "title": "pr", "body": "x", "pull_request": {}}]
+    ).respond_with_json([ISSUE_ITEM, LISTED_PULL])
+    assert await github.issues("o/r", "esteward") == (ISSUE_BUILT,)
+
+
+async def test_issues_united_across_flaky_reads(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    """GitHub sometimes answers an empty listing: the union of three reads is what the module sees."""
+    listing = "/repos/o/r/issues"
+    httpserver.expect_oneshot_request(listing).respond_with_json([])
+    httpserver.expect_oneshot_request(listing).respond_with_json([ISSUE_ITEM | {"number": 13}])
+    httpserver.expect_request(listing).respond_with_json([ISSUE_ITEM | {"number": 14}])
+    assert [issue.number for issue in await github.issues("o/r", "esteward")] == [13, 14]
+
+
+async def test_open_issues(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/repos/o/r/issues", query_string="state=open&per_page=100").respond_with_json(
+        [ISSUE_ITEM, LISTED_PULL]
     )
-    assert await github.issues("o/r", "esteward") == (Issue(1, "t", ""),)
+    assert await github.open_issues("o/r") == (ISSUE_BUILT,)
+
+
+async def test_open_issues_absent(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/repos/o/r/issues", query_string="state=open&per_page=100").respond_with_data(
+        "", status=404
+    )
+    assert await github.open_issues("o/r") == ()
+
+
+async def test_open_pulls(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/repos/o/r/pulls", query_string="state=open&per_page=100").respond_with_json([PULL_ITEM])
+    assert await github.open_pulls("o/r") == (PULL_BUILT,)
+
+
+async def test_open_pulls_absent(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/repos/o/r/pulls", query_string="state=open&per_page=100").respond_with_data(
+        "", status=404
+    )
+    assert await github.open_pulls("o/r") == ()
+
+
+async def test_apply_labels_and_comment(httpserver: HTTPServer, github: GithubAdapter) -> None:
+    httpserver.expect_request("/repos/o/r/issues/4/labels", method="POST").respond_with_json({}, status=201)
+    httpserver.expect_request("/repos/o/r/issues/4/labels/stale", method="DELETE").respond_with_json({})
+    httpserver.expect_request("/repos/o/r/issues/4/labels/other", method="DELETE").respond_with_json({})
+    httpserver.expect_request("/repos/o/r/issues/4/comments", method="POST").respond_with_json({}, status=201)
+    await github.apply("o/r", LabelIssue(4, add=("community",), remove=("stale",)))
+    await github.apply("o/r", LabelIssue(4, remove=("other",)))
+    await github.apply("o/r", CommentIssue(4, "x"))
+    sent = [(request.method, request.path, request.get_json(silent=True)) for request, _ in httpserver.log]
+    assert sent == [
+        ("POST", "/repos/o/r/issues/4/labels", {"labels": ["community"]}),
+        ("DELETE", "/repos/o/r/issues/4/labels/stale", {}),
+        ("DELETE", "/repos/o/r/issues/4/labels/other", {}),
+        ("POST", "/repos/o/r/issues/4/comments", {"body": "x"}),
+    ]
 
 
 async def test_apply(httpserver: HTTPServer, github: GithubAdapter) -> None:
@@ -113,14 +170,6 @@ async def test_apply_pin_absent_issue(httpserver: HTTPServer, github: GithubAdap
     )
     with pytest.raises(ValueError, match="cannot pin"):
         await github.apply("o/r", PinIssue(1))
-
-
-async def test_issues_united_across_flaky_reads(httpserver: HTTPServer, github: GithubAdapter) -> None:
-    listing = "/repos/o/r/issues"
-    httpserver.expect_oneshot_request(listing).respond_with_json([])
-    httpserver.expect_oneshot_request(listing).respond_with_json([{"number": 13, "title": "s", "body": "b"}])
-    httpserver.expect_request(listing).respond_with_json([{"number": 14, "title": "s", "body": "b"}])
-    assert [issue.number for issue in await github.issues("o/r", "esteward")] == [13, 14]
 
 
 async def test_repository_moved(httpserver: HTTPServer, github: GithubAdapter) -> None:

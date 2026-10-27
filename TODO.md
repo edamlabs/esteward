@@ -76,8 +76,6 @@ key; a fix the solver cannot reach downgrades to `watch · blocked upstream` wit
   - Open issues on third-party repositories: write the text and hand it to him.
   - PyPI trusted publishers, Mend repository selection, GHCR package visibility (`edamlabs` → Settings → Packages →
     Package creation now allows Public).
-- **Commit trailer:** `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with the Claude Code
-  line.
 
 ### Credentials and quirks
 
@@ -141,12 +139,21 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
   (`[docs] pages = false`): its versions live per image, and that check follows its per-image release policy.
   Deploy alignment shipped with it: `docs.yml` added where absent (etrafilatura, anytomd, e-serde), the
   `DOCS_DEPLOY` gate switched on where the workflow existed inert (gliner, e-voice).
-- **M5 · community.**
-  - Deterministic triage of third-party issues and PRs: labels, missing-reproduction requests, stale closing with a
-    message.
-  - It never approves and never merges a third-party PR.
+- **M5 · community — done (2026-10-27).** The `community` module triages every open third-party issue and pull
+  request of a repository from the records alone: the `community` label marks what the engine has seen, an issue
+  with no body earns a request for the reproduction and the `needs-repro` label, idleness past `stale_days`
+  (default 180) earns the `stale` label and a warning naming the day it closes, and idleness past `close_days`
+  (default 30) more closes it with its idle age; new activity drops the label instead. It never approves and never
+  merges a third-party PR — no such operation exists in its vocabulary — and it never speaks about an insider,
+  about automation or about a draft: `author_association` answers the engine's own status issues and Renovate's as
+  `CONTRIBUTOR`/`NONE`, so the login decides (decisions 2026-10-27). Enabled on all six fleet entries; the daily
+  `--publish` run carries the triage out, a dry run prints each row as `planned`. Live dry runs over the whole
+  fleet print `0 open third-party items` and no community escalation.
 - **Check:** each module ships with 100 % coverage and a dry run over the whole fleet, with no false `escalate` on
   today's state.
+  - Still open by nature, for M5: the first real third-party item, where the label and (if it stays empty) the
+    reproduction request land. Unknown labels auto-create (measured on a scratch repository); giving
+    `community`, `stale` and `needs-repro` a colour and a description is cosmetic and Damien's to schedule.
 
 ## 3 · Housekeeping
 

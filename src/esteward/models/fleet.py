@@ -32,6 +32,7 @@ class ModuleFleet(StrEnum):
     RELEASE = auto()
     UPSTREAM = auto()
     DOCS = auto()
+    COMMUNITY = auto()
 
 
 class WatchFleet(msgspec.Struct, frozen=True, kw_only=True):
@@ -84,6 +85,13 @@ class DocsFleet(msgspec.Struct, frozen=True, kw_only=True):
     pages: bool = True
 
 
+class CommunityFleet(msgspec.Struct, frozen=True, kw_only=True):
+    """How long a third-party item may idle before the warning, and before the warning closes it."""
+
+    stale_days: int = 180
+    close_days: int = 30
+
+
 class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     """One project: its repository slug, kind, enabled modules and module settings."""
 
@@ -96,6 +104,7 @@ class Fleet(msgspec.Struct, frozen=True, kw_only=True):
     release: ReleaseFleet = ReleaseFleet()
     upstream: UpstreamFleet = UpstreamFleet()
     docs: DocsFleet = DocsFleet()
+    community: CommunityFleet = CommunityFleet()
 
     @classmethod
     def load(cls, path: Path) -> Self:

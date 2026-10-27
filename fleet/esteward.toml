@@ -2,7 +2,7 @@
 repo = "edamlabs/esteward"
 kind = "lib"
 family = "infra"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "community"]
 
 [deps]
 lockfiles = ["uv.lock"]

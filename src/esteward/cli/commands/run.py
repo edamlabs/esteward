@@ -17,6 +17,7 @@ from esteward.core.lifespan import RuntimeLifespan, lifespan
 from esteward.core.settings import settings as st
 from esteward.logic.dashboard import DASHBOARD_LABEL, ESCALATION_LABEL, StatusDashboard
 from esteward.logic.modules.act import ActModule
+from esteward.logic.modules.community import CommunityModule, CommunityStage
 from esteward.logic.modules.deps import DepsModule
 from esteward.logic.modules.docs import DocsModule
 from esteward.logic.modules.drift import DriftModule
@@ -44,6 +45,7 @@ MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], Runner
         ModuleFleet.RELEASE: lambda rt, now: ReleaseModule(rt.github, rt.github, now),
         ModuleFleet.UPSTREAM: lambda rt, now: UpstreamModule(rt.github, rt.registries, now),
         ModuleFleet.DOCS: lambda rt, now: DocsModule(rt.github, rt.site, rt.workspace, now, concurrency=st.concurrency),
+        ModuleFleet.COMMUNITY: lambda rt, now: CommunityModule(rt.github, now),
     }
 )
 
@@ -66,7 +68,7 @@ async def _run_stages(
     publish: bool,
     now: datetime,
 ) -> tuple[Report, ...]:
-    """The stages that carry out the reports' act findings: act over deps, release over release."""
+    """The stages that carry out the reports' act findings: act, release and community, each over its own."""
     acted = [
         (await ActModule(rt.workspace, rt.advisories, rt.github, publish=publish).run(fleet, report))
         if act and report.module == ModuleFleet.DEPS
@@ -79,7 +81,14 @@ async def _run_stages(
         else report
         for report in acted
     ]
-    return tuple(released)
+    return tuple(
+        [
+            (await CommunityStage(rt.github, now, publish=publish).run(fleet, report))
+            if report.module == ModuleFleet.COMMUNITY
+            else report
+            for report in released
+        ]
+    )
 
 
 async def _run_modules(

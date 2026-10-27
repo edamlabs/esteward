@@ -236,3 +236,25 @@ two sites had no deploy path at all, which is exactly why three Pages sites serv
 **Rejected.** A hardcoded zensical argv in the engine (fails on the uvx repositories, skips e-voice's
 OpenAPI step); dropping `--strict` from the engine's build (the TODO names the strict build as the check);
 comparing e-voice's Pages against a repository tag (its releases are per image).
+
+### 2026-10-27 · Triage is for strangers: automation is read from the login, not the association
+
+**Decision.** The `community` module triages an open item only when a stranger owns it. An insider is
+`OWNER`/`MEMBER`/`COLLABORATOR`; automation is an author whose login ends in `[bot]`; a draft pull request is
+work its author marked unfinished and is counted but never spoken about. The engine never approves and never
+merges a third-party pull request: no such operation exists in its vocabulary.
+
+**Evidence.** `gh api` over the fleet's open items (2026-10-27): `eself-maintenance[bot]` reports its own
+status and escalation issues as `CONTRIBUTOR` or `NONE`, and `renovate[bot]` as `CONTRIBUTOR` or `NONE`. An
+association-only rule would therefore have labelled the engine's own pinned status issue `community` and,
+after `stale_days + close_days`, closed it and every Renovate issue — the dashboard is the module's output,
+so the run would have destroyed its own record. Live dry runs on all six repositories after the guard print
+`0 open third-party items` and no community escalation.
+
+**Rejected.** Trusting `author_association` alone (measured above to be wrong for app-authenticated actors);
+reading `user.type == "Bot"` (a field the listing already answers with the login suffix — one more read for
+the same fact); a dedicated `--community` flag mirroring `--act`/`--release` (the triage is deterministic,
+reversible by simply replying, and `--publish` is already the line between planning and carrying out);
+creating the three labels fleet-wide before enabling (measured on a scratch repository: `POST
+/issues/{n}/labels` auto-creates an unknown label with the default colour, so no bootstrap is required —
+a colour and description pass remains cosmetic and Damien's to schedule).

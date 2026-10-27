@@ -2,8 +2,9 @@
 
 import subprocess
 from collections.abc import Iterator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any, Final
 
 import pytest
 import wreq
@@ -14,9 +15,44 @@ from esteward.adapters.github import GithubAdapter
 from esteward.adapters.osv import OsvAdapter
 from esteward.adapters.pypi import PypiAdapter
 from esteward.adapters.workspace import WorkspaceAdapter
+from esteward.models.issue import Issue
+from esteward.models.pull import TriagePull
 
 AGENT = "esteward-test"
 IDENTITY = "esteward[bot] <eself-maintenance[bot]@users.noreply.github.com>"
+
+##### TRACKER PAYLOADS #####
+
+### One item as the tracker answers it: the listing of issues and the listing of pulls read the same fields.
+ISSUE_ITEM: Final[dict[str, Any]] = {
+    "number": 1,
+    "title": "t",
+    "body": None,
+    "user": {"login": "stranger"},
+    "author_association": "NONE",
+    "labels": [{"name": "bug"}],
+    "updated_at": "2026-10-01T00:00:00Z",
+}
+ISSUE_BUILT: Final = Issue(
+    number=1,
+    title="t",
+    body="",
+    author="stranger",
+    association="NONE",
+    labels=("bug",),
+    updated=datetime(2026, 10, 1, tzinfo=UTC),
+)
+PULL_ITEM: Final[dict[str, Any]] = {**ISSUE_ITEM, "number": 5, "draft": True}
+PULL_BUILT: Final = TriagePull(
+    number=5,
+    author="stranger",
+    association="NONE",
+    labels=("bug",),
+    updated=datetime(2026, 10, 1, tzinfo=UTC),
+    draft=True,
+)
+### A pull request inside the issues listing: `/issues` returns both, the tracker keeps them apart by this key.
+LISTED_PULL: Final[dict[str, Any]] = {"number": 2, "title": "pr", "body": "x", "pull_request": {}}
 
 
 def git(*argv: str) -> str:

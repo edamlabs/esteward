@@ -11,10 +11,19 @@ import pytest
 from esteward.logic.bump import UvBump
 from esteward.logic.modules.act import ActModule
 from esteward.logic.modules.release import KeyRelease, ReleaseModule, ReleaseStage
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
+from esteward.models.issue import (
+    CloseIssue,
+    CommentIssue,
+    CreateIssue,
+    Issue,
+    LabelIssue,
+    OperationIssue,
+    PinIssue,
+    UpdateIssue,
+)
 from esteward.models.outcome import RunOutcome
 from esteward.models.package import KindPackage, LockedPackage
-from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
+from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, TriagePull, UpdatePull
 from esteward.models.report import FindingReport, Report
 from esteward.models.signal import CommitSignal, PackageSignal
 from esteward.models.verdict import Verdict
@@ -145,12 +154,20 @@ class FakeTracker:
 
     pulls: dict[str, Pull] = field(default_factory=dict)
     merged_pulls: dict[str, Pull] = field(default_factory=dict)
+    open_issues_list: list[Issue] = field(default_factory=list)
+    open_pulls_list: list[TriagePull] = field(default_factory=list)
     applied: list[OperationIssue | OperationPull] = field(default_factory=list)
     create_forgets: bool = False
     _created: int = field(default=0, init=False)
 
     async def issues(self, slug: str, label: str) -> tuple[Issue, ...]:
         return ()
+
+    async def open_issues(self, slug: str) -> tuple[Issue, ...]:
+        return tuple(self.open_issues_list)
+
+    async def open_pulls(self, slug: str) -> tuple[TriagePull, ...]:
+        return tuple(self.open_pulls_list)
 
     async def pull(self, slug: str, branch: str) -> Pull | None:
         return self.pulls.get(branch)
@@ -180,6 +197,8 @@ class FakeTracker:
             case CreateIssue() | UpdateIssue() | CloseIssue() | PinIssue():
                 message = "the act stage never plans issue operations"
                 raise AssertionError(message)
+            case LabelIssue() | CommentIssue():
+                pass
             case unreachable:
                 assert_never(unreachable)
 

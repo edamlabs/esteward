@@ -47,9 +47,9 @@ The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eag
 | `upstream` | each declared engine against its newest release: parity current, engine ahead (the repository's sync flow owns the mirror, or a human when none exists), a wrong parity declaration, a vanished registry page | crates.io, PyPI, GitHub |
 | `docs` | `make docs` (the strict Zensical build) passes on main; the deployed Pages site serves the newest release; no dead external link in `docs/` | the checkout, GitHub Pages, every linked site |
 | `release` | `## [Unreleased]` content gates a release; a Fixed/Security entry releases at once, anything else once the oldest unreleased commit passes the fleet's age; patch by default, minor on `### Added` or `feat:`, a breaking marker escalates; a folded version without its tag is carried | GitHub (changelog, tags, commits) |
+| `community` | every open third-party issue and pull request: the `community` label it has never been given, the reproduction an empty issue lacks, the `stale` warning past the entry's idle age and the close past its own grace | GitHub |
 
-More modules (upstream, release, docs, community) follow the same contract: a fleet entry in, a
-`Report` out.
+Every module follows the same contract: a fleet entry in, a `Report` out.
 
 ## Act
 
@@ -73,6 +73,19 @@ A later run pushes the tag once that PR has merged, onto its merge commit; the r
 tag-driven workflow builds and publishes. A version folded but untagged holds the next release
 (`watch`), and anything that would need a major version escalates instead. The module is enabled per
 fleet entry, as repositories converge onto the tag-push flow.
+
+## Community
+
+The `community` module triages what a stranger opened: it labels the item `community` once it has seen it,
+asks for the reproduction an empty issue lacks (`needs-repro`), marks an item idle past
+`stale_days` as `stale` with a warning naming the day it closes, and closes it once that warning ages out
+past `close_days` — with a reply dropping the label instead. New activity always wins.
+
+Automation and insiders are never triaged. `author_association` cannot tell them apart — the engine's own
+status issues and Renovate's answer as `CONTRIBUTOR` or `NONE` — so the author's login decides, and a draft
+pull request is left alone. The engine never approves and never merges a third-party pull request: no such
+operation exists in its vocabulary. Triage is carried out by `--publish` like the dashboard, and a dry run
+prints each row as `planned` instead.
 
 ## The fleet
 

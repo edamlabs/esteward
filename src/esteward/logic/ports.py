@@ -5,7 +5,7 @@ from typing import Protocol, runtime_checkable
 from esteward.models.issue import Issue, OperationIssue
 from esteward.models.outcome import RunOutcome
 from esteward.models.package import AdvisoryPackage, LockedPackage
-from esteward.models.pull import OperationPull, Pull
+from esteward.models.pull import OperationPull, Pull, TriagePull
 from esteward.models.signal import CommitSignal, PackageSignal, RepositorySignal
 
 
@@ -46,9 +46,13 @@ class TrackerPort(Protocol):
 
     async def issues(self, slug: str, label: str) -> tuple[Issue, ...]: ...
 
+    async def open_issues(self, slug: str) -> tuple[Issue, ...]: ...
+
     async def pull(self, slug: str, branch: str) -> Pull | None: ...
 
     async def merged(self, slug: str, branch: str) -> Pull | None: ...
+
+    async def open_pulls(self, slug: str) -> tuple[TriagePull, ...]: ...
 
     async def apply(self, slug: str, operation: OperationIssue | OperationPull) -> None: ...
 

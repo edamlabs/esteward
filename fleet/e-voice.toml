@@ -2,7 +2,7 @@
 repo = "edamlabs/e-voice"
 kind = "service"
 family = "eager"
-modules = ["deps", "security", "drift", "docs"]
+modules = ["deps", "security", "drift", "docs", "community"]
 
 [deps]
 lockfiles = ["Cargo.lock", "eval/uv.lock"]

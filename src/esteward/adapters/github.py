@@ -1,5 +1,6 @@
 """GitHub REST: the code host (repositories, files, commits) and the tracker (issues) of the fleet."""
 
+import asyncio
 from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Final, assert_never
@@ -7,8 +8,17 @@ from urllib.parse import quote
 
 import wreq
 
-from esteward.models.issue import CloseIssue, CreateIssue, Issue, OperationIssue, PinIssue, UpdateIssue
-from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
+from esteward.models.issue import (
+    CloseIssue,
+    CommentIssue,
+    CreateIssue,
+    Issue,
+    LabelIssue,
+    OperationIssue,
+    PinIssue,
+    UpdateIssue,
+)
+from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, TriagePull, UpdatePull
 from esteward.models.signal import CommitSignal, RepositorySignal
 
 API_VERSION: Final = "2022-11-28"
@@ -200,11 +210,46 @@ class GithubAdapter:
             case None:
                 return ()
             case response:
-                return tuple(
-                    Issue(item["number"], item["title"], item.get("body") or "")
-                    for item in await response.json()
-                    if "pull_request" not in item
-                )
+                return tuple(self._issue_build(item) for item in await response.json() if "pull_request" not in item)
+
+    @staticmethod
+    def _issue_build(item: dict[str, Any]) -> Issue:
+        return Issue(
+            number=item["number"],
+            title=item["title"],
+            body=item.get("body") or "",
+            author=item["user"]["login"],
+            association=item["author_association"],
+            labels=tuple(label["name"] for label in item["labels"]),
+            updated=datetime.fromisoformat(item["updated_at"]),
+        )
+
+    @staticmethod
+    def _triage_build(item: dict[str, Any]) -> TriagePull:
+        return TriagePull(
+            number=item["number"],
+            author=item["user"]["login"],
+            association=item["author_association"],
+            labels=tuple(label["name"] for label in item["labels"]),
+            updated=datetime.fromisoformat(item["updated_at"]),
+            draft=bool(item["draft"]),
+        )
+
+    async def open_issues(self, slug: str) -> tuple[Issue, ...]:
+        """Every open issue of a repository, pull requests excluded."""
+        match await self._common_get(f"/repos/{slug}/issues?state=open&per_page=100"):
+            case None:
+                return ()
+            case response:
+                return tuple(self._issue_build(item) for item in await response.json() if "pull_request" not in item)
+
+    async def open_pulls(self, slug: str) -> tuple[TriagePull, ...]:
+        """Every open pull request of a repository, drafts included."""
+        match await self._common_get(f"/repos/{slug}/pulls?state=open&per_page=100"):
+            case None:
+                return ()
+            case response:
+                return tuple(self._triage_build(item) for item in await response.json())
 
     async def issues(self, slug: str, label: str) -> tuple[Issue, ...]:
         """Open issues carrying a label, by number: the union of LISTING_READS reads, never one empty answer."""
@@ -249,6 +294,22 @@ class GithubAdapter:
                 )
             case PinIssue(number=number):
                 await self._apply_pin(slug, number)
+            case LabelIssue(number=number, add=add, remove=remove):
+                match add:
+                    case ():
+                        pass
+                    case labels:
+                        await self._common_send(
+                            wreq.Method.POST, f"/repos/{slug}/issues/{number}/labels", {"labels": list(labels)}
+                        )
+                await asyncio.gather(
+                    *(
+                        self._common_send(wreq.Method.DELETE, f"/repos/{slug}/issues/{number}/labels/{quote(name)}", {})
+                        for name in remove
+                    )
+                )
+            case CommentIssue(number=number, body=body):
+                await self._common_send(wreq.Method.POST, f"/repos/{slug}/issues/{number}/comments", {"body": body})
             case CreatePull(branch=branch, title=title, body=body):
                 response = await self._common_send(
                     wreq.Method.POST,

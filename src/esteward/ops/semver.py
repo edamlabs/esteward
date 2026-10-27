@@ -26,12 +26,9 @@ class Semver:
     ##### PRIVATE #####
 
     @staticmethod
-    def _latest_rank(text: str) -> tuple[int, Version | str]:
-        """Sort key of a version text: parseable releases above, unparsable below, by text."""
-        try:
-            return (1, Version(text.removeprefix(PREFIX)))
-        except InvalidVersion:
-            return (0, text)
+    def _latest_version(text: str) -> Version:
+        """The parsed version of a tag or heading text, its `v` prefix stripped."""
+        return Version(text.removeprefix(PREFIX))
 
     ############################################################
 
@@ -48,12 +45,18 @@ class Semver:
                 assert_never(unreachable)
 
     @staticmethod
+    def rank(text: str) -> tuple[int, Version | str]:
+        """Sort key of a version text: parseable releases first, unparsable ones after, by text."""
+        try:
+            return (0, Version(text.removeprefix(PREFIX)))
+        except InvalidVersion:
+            return (1, text)
+
+    @staticmethod
     def latest(texts: tuple[str, ...]) -> str | None:
-        """The highest of the version texts, prefix optional; None when none of them parses."""
-        match max(((Semver._latest_rank(text), text) for text in texts), default=None):
-            case None:
+        """The highest of the parseable version texts, prefix optional; None when none parses."""
+        match [text for text in texts if Semver.rank(text)[0] == 0]:
+            case []:
                 return None
-            case ((1, _), text):
-                return text
-            case _:
-                return None
+            case parseable:
+                return max(parseable, key=Semver._latest_version)

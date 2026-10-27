@@ -16,7 +16,7 @@ class RepositorySignal:
 
 @dataclass(frozen=True, slots=True)
 class PackageSignal:
-    """The latest release of a package as its registry reports it."""
+    """The latest release of a package as its registry reports it; `newest` includes prereleases."""
 
     name: str
     version: str
@@ -24,6 +24,7 @@ class PackageSignal:
     status: str
     license: str | None
     yanked: bool
+    newest: str
 
 
 @dataclass(frozen=True, slots=True)

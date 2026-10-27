@@ -44,6 +44,7 @@ The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eag
 | `deps` | every watched dependency: repository archived or dormant, registry status (PEP 792), release age, yanked latest, license change; every locked package: vulnerabilities and unmaintained notices | GitHub, PyPI, crates.io, OSV (RustSec included) |
 | `security` | every action pinned by commit SHA in the workflow paths resolves to a real commit | GitHub |
 | `drift` | `[tool.edamlabs]` in `pyproject.toml` declares the fleet entry's `kind` and `family`: missing acts, contradicting escalates | GitHub |
+| `upstream` | each declared engine against its newest release: parity current, engine ahead (the repository's sync flow owns the mirror, or a human when none exists), a wrong parity declaration, a vanished registry page | crates.io, PyPI, GitHub |
 | `release` | `## [Unreleased]` content gates a release; a Fixed/Security entry releases at once, anything else once the oldest unreleased commit passes the fleet's age; patch by default, minor on `### Added` or `feat:`, a breaking marker escalates; a folded version without its tag is carried | GitHub (changelog, tags, commits) |
 
 More modules (upstream, release, docs, community) follow the same contract: a fleet entry in, a

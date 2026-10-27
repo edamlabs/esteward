@@ -21,6 +21,7 @@ from esteward.logic.modules.deps import DepsModule
 from esteward.logic.modules.drift import DriftModule
 from esteward.logic.modules.release import ReleaseModule, ReleaseStage
 from esteward.logic.modules.security import SecurityModule
+from esteward.logic.modules.upstream import UpstreamModule
 from esteward.models.fleet import Fleet, ModuleFleet
 from esteward.models.issue import OperationIssue
 from esteward.models.report import Report
@@ -40,6 +41,7 @@ MODULES: Final[Mapping[ModuleFleet, Callable[[RuntimeLifespan, datetime], Runner
         ModuleFleet.SECURITY: lambda rt, now: SecurityModule(rt.github, now, st.concurrency),
         ModuleFleet.DRIFT: lambda rt, now: DriftModule(rt.github, now),
         ModuleFleet.RELEASE: lambda rt, now: ReleaseModule(rt.github, rt.github, now),
+        ModuleFleet.UPSTREAM: lambda rt, now: UpstreamModule(rt.github, rt.registries, now),
     }
 )
 

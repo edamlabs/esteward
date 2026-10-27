@@ -44,7 +44,7 @@ ENTRY = """
 repo = "edamlabs/project"
 kind = "lib"
 family = "binding"
-modules = ["deps", "security", "drift"]
+modules = ["deps", "security", "drift", "upstream"]
 
 [deps]
 lockfiles = ["uv.lock"]
@@ -54,6 +54,11 @@ name = "dep"
 repo = "https://github.com/owner/dep"
 registry = "https://pypi.org/project/dep/"
 license = "MIT"
+
+[[upstream.engines]]
+name = "dep"
+registry = "https://pypi.org/project/dep/"
+parity = "1.0"
 """
 
 
@@ -94,6 +99,7 @@ def world(httpserver: HTTPServer, resources: Path) -> HTTPServer:
         {
             "info": {"version": "1.0", "license_expression": "MIT"},
             "urls": [{"upload_time_iso_8601": "2026-10-01T00:00:00Z"}],
+            "releases": {"1.0": [{"yanked": False}]},
         }
     )
     httpserver.expect_request("/simple/dep/").respond_with_json({"project-status": {"status": "active"}})
@@ -197,6 +203,7 @@ def act_world(httpserver: HTTPServer, resources: Path) -> HTTPServer:
         {
             "info": {"version": "1.0", "license_expression": "MIT"},
             "urls": [{"upload_time_iso_8601": "2026-10-01T00:00:00Z"}],
+            "releases": {"1.0": [{"yanked": False}]},
         }
     )
     httpserver.expect_request("/simple/dep/").respond_with_json({"project-status": {"status": "active"}})

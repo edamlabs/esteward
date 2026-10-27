@@ -1,5 +1,6 @@
 """In-memory workspace and tracker: the act and release stages are tested without git, tools or network."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,7 +16,7 @@ from esteward.models.outcome import RunOutcome
 from esteward.models.package import KindPackage, LockedPackage
 from esteward.models.pull import AutomergePull, CreatePull, OperationPull, Pull, UpdatePull
 from esteward.models.report import FindingReport, Report
-from esteward.models.signal import CommitSignal
+from esteward.models.signal import CommitSignal, PackageSignal
 from esteward.models.verdict import Verdict
 from tests.unit.esteward.logic.conftest import FakeAdvisories, FakeHost
 
@@ -228,6 +229,18 @@ def solver(locked: LockedPackage) -> tuple[str, ...]:
 def tree(locked: LockedPackage) -> tuple[str, ...]:
     """The exact argv the act stage runs to ask what depends on urllib3."""
     return UvBump.tree("uv.lock", locked)
+
+
+@pytest.fixture
+def engine_signal() -> Callable[[str], PackageSignal]:
+    """Builder of a registry signal for the watched engine, at one newest release."""
+
+    def build(newest: str) -> PackageSignal:
+        return PackageSignal(
+            "dep", "1.0", released_at=None, status="active", license="MIT", yanked=False, newest=newest
+        )
+
+    return build
 
 
 @pytest.fixture

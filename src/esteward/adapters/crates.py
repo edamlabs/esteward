@@ -36,4 +36,5 @@ class CratesAdapter:
             status="active",
             license=entry.get("license"),
             yanked=bool(entry["yanked"]),
+            newest=data["crate"]["newest_version"],
         )

@@ -115,10 +115,8 @@ A version folded but untagged holds the next release (`watch`). Enabled on **etr
   `[Unreleased]` is empty as of 2026-10-26, so the engine correctly decides "no unreleased content". Watch
   the first `fix:` that lands on etrafilatura or anytomd.
 - **Enable the rest as each converges:**
-  - **gliner** and **e-serde** publish via `workflow_dispatch`, not a `v*` push, so the engine's tag would not
-    trigger a build. Converge their `release.yml` onto the tag-push flow (gliner: drop the manual-bump `tag`
-    job; e-serde: keep its wheels/publish jobs, trigger them on the tag esteward pushes), then add `release`
-    to their fleet entries.
+  - **e-serde** and **gliner** converged on 2026-10-27 (their `release.yml` is tag-driven now: the engine's
+    tag fires wheels/sdist/PyPI and the image respectively) and their fleet entries enable `release`.
   - **e-voice** releases per image (`stt-v*`/`tts-v*`/`full-v*`); its `service` comes from which crates changed
     since the last tag. Needs its own per-image policy before it can be enabled.
 

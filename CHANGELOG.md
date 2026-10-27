@@ -17,3 +17,8 @@ milestones it has reached.
   warning naming the day it closes, and idleness past the warning closes the item with its idle age. Insiders,
   automation and drafts are never spoken about; the engine never approves and never merges a third-party pull
   request. Enabled on all six fleet entries.
+
+### Changed
+
+- README: badge layout, description and identity line standardized on the e-serde template; the verdict ladder
+  kept as its own table under the identity line. Done in `TODO_standardize_readme` across the fleet.

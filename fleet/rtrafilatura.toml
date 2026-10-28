@@ -1,5 +1,5 @@
-# Maintenance contract of edamlabs/etrafilatura.
-repo = "edamlabs/etrafilatura"
+# Maintenance contract of edamlabs/rtrafilatura.
+repo = "edamlabs/rtrafilatura"
 kind = "lib"
 family = "binding"
 modules = ["deps", "security", "drift", "release", "upstream", "docs", "community"]
@@ -50,4 +50,4 @@ license = "MIT"
 [[upstream.engines]]
 name = "trafilatura"
 registry = "https://crates.io/crates/trafilatura"
-parity = "0.5.0"
+parity = "0.6.0"

@@ -30,5 +30,5 @@ hooks:            ## install the git hooks
 fleet:            ## list the projects under maintenance
 	uv run esteward fleet
 
-run:              ## dry run of one project: make run P=etrafilatura
+run:              ## dry run of one project: make run P=rtrafilatura
 	GH_TOKEN="$$(gh auth token)" uv run esteward run $(P)

@@ -14,7 +14,7 @@ needs a decision becomes one deduplicated issue.
 
 | Repo | `kind` | `family` | Ships | Local clone | Release flow |
 |---|---|---|---|---|---|
-| `etrafilatura` | lib | binding | PyPI `etrafilatura` 0.1.0 | `~/workspaces/damien/etrafilatura` | push tag `v*` → `release.yml` |
+| `rtrafilatura` | lib | binding | PyPI `rtrafilatura` 0.1.0 | `~/workspaces/damien/rtrafilatura` | push tag `v*` → `release.yml` |
 | `anytomd` | lib | binding | PyPI `anytomd` 1.4.2 | `~/workspaces/damien/anytomd` | push tag `v*` → `release.yml` |
 | `gliner` | service | binding | GHCR `ghcr.io/edamlabs/gliner` 0.1.2 | `~/workspaces/damien/gliner` | push tag `v*` → `release.yml` |
 | `e-serde` | lib | eager | PyPI `e-serde` 0.6.2 (import `eserde`) | `~/workspaces/damien/e-serde` | `workflow_dispatch` (bump) → release PR (app token) → tag → PyPI |
@@ -105,13 +105,13 @@ commit passes the fleet entry's `unreleased_age_days`; patch by default, minor o
 commit, a breaking marker escalates. Execution: fold the changelog line for line like e-serde's awk, bump the
 static version fields, re-sync the root lockfiles, open one self-merging `chore(release): vX.Y.Z` PR, and push
 the tag onto that PR's merge commit on a later run; the repository's own tag-driven `release.yml` publishes.
-A version folded but untagged holds the next release (`watch`). Enabled on **etrafilatura** and **anytomd**
+A version folded but untagged holds the next release (`watch`). Enabled on **rtrafilatura** and **anytomd**
 (both already trigger on `v*` pushes); live dry runs print the decisions.
 
 - **Check still open:** one real automatic patch release, on a repository with pending fixes, lands on
   PyPI/GHCR with no human step. Blocked on a repository actually accumulating an unreleased fix — every
   `[Unreleased]` is empty as of 2026-10-26, so the engine correctly decides "no unreleased content". Watch
-  the first `fix:` that lands on etrafilatura or anytomd.
+  the first `fix:` that lands on rtrafilatura or anytomd.
 - **Enable the rest as each converges:**
   - **e-serde** and **gliner** converged on 2026-10-27 (their `release.yml` is tag-driven now: the engine's
     tag fires wheels/sdist/PyPI and the image respectively) and their fleet entries enable `release`.
@@ -128,7 +128,7 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
   the mirror); escalate when the engine moved ahead and no flow exists (a human sets the parity), when the
   parity is ahead of the engine (a wrong declaration), or when the registry page is gone. Detection only: the
   public API diff and the repair stay with the repository's tooling (`make apidiff`, the sync flow). Enabled on
-  etrafilatura, anytomd and gliner at today's parity; the live dry run escalates nothing (tokenizers is watch:
+  rtrafilatura, anytomd and gliner at today's parity; the live dry run escalates nothing (tokenizers is watch:
   its 1.0.0-rc.3 sits ahead of the stable parity 0.23.2, and gliner's sync flow owns that mirror).
 - **M4 · docs — done (2026-10-27).** The `docs` module runs the repository's own `make docs` (every repo's
   target builds strict: aligned in the same sweep) in a fresh checkout; probes the Pages site (the changelog
@@ -137,7 +137,7 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
   issues are the cache across runs, closing themselves when the link lives again. Dead links and failing
   builds escalate; a missing docs config or a missing release watch. e-voice defers the pages check
   (`[docs] pages = false`): its versions live per image, and that check follows its per-image release policy.
-  Deploy alignment shipped with it: `docs.yml` added where absent (etrafilatura, anytomd, e-serde), the
+  Deploy alignment shipped with it: `docs.yml` added where absent (rtrafilatura, anytomd, e-serde), the
   `DOCS_DEPLOY` gate switched on where the workflow existed inert (gliner, e-voice).
 - **M5 · community — done (2026-10-27).** The `community` module triages every open third-party issue and pull
   request of a repository from the records alone: the `community` label marks what the engine has seen, an issue
@@ -191,7 +191,7 @@ Adding a repository to the fleet, the recipe proven on five repositories:
 1. Branch before transfer: URLs/authorship → edamlabs, identity in the manifest, docs on Zensical, Renovate replacing
    Dependabot, `docs/decisions.md`, CHANGELOG.
 2. `gh api -X POST repos/damvolkov/<r>/transfer -f new_owner=edamlabs`; update the remote.
-3. Ruleset (clone etrafilatura's, swap the required checks), `allow_auto_merge`, labels (`~/.local/bin/bootstrap-org`),
+3. Ruleset (clone rtrafilatura's, swap the required checks), `allow_auto_merge`, labels (`~/.local/bin/bootstrap-org`),
    `~/.config/esmbot/repos.txt`.
 4. Damien deletes the repo-level secrets and variables that shadow the org ones, adds the repo to Mend, and adds the
    PyPI trusted publisher (lib) or makes the GHCR packages public (service).

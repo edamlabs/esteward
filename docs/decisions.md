@@ -2,15 +2,15 @@
 
 ### 2026-10-22 · A public engine of its own, in edamlabs
 
-**Decision.** Maintenance of EDamLabs projects lives in `edamlabs/esteward`, public. e-taxis and e-nous stay
-private and personal: they mount projects and harnesses, they do not maintain them.
+**Decision.** Maintenance of EDamLabs projects lives in `edamlabs/esteward`, public. The personal toolchain
+stays private and personal: it mounts projects and harnesses, it does not maintain them.
 
 **Evidence.** The fleet is public (libraries and dockerizable services); the engine acting on it is shared
 infrastructure, not personal tooling. A private engine could not be installed by public repositories' CI
 without a cross-identity token.
 
-**Rejected.** `taxis maintain` (mixes a personal toolchain with organisation infrastructure); a PyPI package
-(see below).
+**Rejected.** A `maintain` command bolted onto the personal toolchain (mixes it with organisation
+infrastructure); a PyPI package (see below).
 
 ### 2026-10-22 · Consumed from git, never published
 
@@ -37,8 +37,8 @@ configuration change land together.
 and advisory databases report. Escalations open one issue each, keyed by a marker, updated while they
 persist and closed when they clear; one pinned status issue per repository holds the rest.
 
-**Evidence.** Phantom-pin detection verified on damvolkov/e-arkhetypo: 10 pins naming no commit found, matching
-the manual audit; etrafilatura: 6 healthy dependencies, 14 resolving pins, 212 locked packages queried.
+**Evidence.** Phantom-pin detection verified on a private blueprint repository: 10 pins naming no commit found,
+matching the manual audit; etrafilatura: 6 healthy dependencies, 14 resolving pins, 212 locked packages queried.
 
 **Rejected.** Pull requests for every finding (a human would review a junior's work); an LLM judging health (a
 deterministic check exists for every signal).

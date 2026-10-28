@@ -172,11 +172,6 @@ Each is a module with the same contract: a fleet entry in, a `Report` out, wired
   - The old `damvolkov/anytomd` PyPI trusted publisher: Damien removes it.
 - **e-serde and e-voice have no `sync.yml`/`maintenance.yml`** (the agent flow the bindings have). Decide whether the
   eager series needs an agent at all, now that Renovate and esteward cover them. Record the decision either way.
-- **e-arkhetypo** (`damvolkov/e-arkhetypo`, private tooling stays in e-taxis/e-nous).
-  - Another instance is refactoring `core` → `infra` there. Coordinate before touching it.
-  - Not yet exported: the release-PR-with-app-token flow and the changelog fold from item 1 (export once proven in
-    two repositories), and per-subproject `.python-version` pins (e-voice `eval/` broke when uv picked CPython 3.15.1,
-    where polars 1.44.2 returns `None` from `Series.drop_nulls()`).
 - **Strict checks and own PRs.** Every non-Renovate PR goes `BEHIND` as soon as Renovate merges first. Measure how
   often over two weeks. If it is frequent, the act stage's PR opener should rebase and re-enable auto-merge itself.
 

@@ -14,11 +14,11 @@ needs a decision becomes one deduplicated issue.
 
 | Repo | `kind` | `family` | Ships | Local clone | Release flow |
 |---|---|---|---|---|---|
-| `rtrafilatura` | lib | binding | PyPI `rtrafilatura` 0.1.0 | `~/workspaces/damien/rtrafilatura` | push tag `v*` → `release.yml` |
-| `anytomd` | lib | binding | PyPI `anytomd` 1.4.2 | `~/workspaces/damien/anytomd` | push tag `v*` → `release.yml` |
-| `gliner` | service | binding | GHCR `ghcr.io/edamlabs/gliner` 0.1.2 | `~/workspaces/damien/gliner` | push tag `v*` → `release.yml` |
-| `e-serde` | lib | eager | PyPI `e-serde` 0.6.2 (import `eserde`) | `~/workspaces/damien/e-serde` | `workflow_dispatch` (bump) → release PR (app token) → tag → PyPI |
-| `e-voice` | service | eager | GHCR `evoice-stt` 0.2.3, `evoice-tts` 0.2.1, `evoice-full` 0.2.3 | `~/workspaces/damien/e-voice` | `workflow_dispatch` (service, bump) → per-image tags `stt-v*`/`tts-v*`/`full-v*` → GHCR |
+| `rtrafilatura` | lib | binding | PyPI `rtrafilatura` 0.2.0 | `~/workspaces/edamlabs/rtrafilatura` | push tag `v*` → `release.yml` |
+| `anytomd` | lib | binding | PyPI `anytomd` 1.4.2 | `~/workspaces/edamlabs/anytomd` | push tag `v*` → `release.yml` |
+| `gliner` | service | binding | GHCR `ghcr.io/edamlabs/gliner` 0.1.2 | `~/workspaces/edamlabs/gliner` | push tag `v*` → `release.yml` |
+| `e-serde` | lib | eager | PyPI `e-serde` 0.6.2 (import `eserde`) | `~/workspaces/edamlabs/e-serde` | `workflow_dispatch` (bump) → release PR (app token) → tag → PyPI |
+| `e-voice` | service | eager | GHCR `evoice-stt` 0.2.3, `evoice-tts` 0.2.1, `evoice-full` 0.2.3 | `~/workspaces/edamlabs/e-voice` | `workflow_dispatch` (service, bump) → per-image tags `stt-v*`/`tts-v*`/`full-v*` → GHCR |
 | `esteward` | lib | infra | consumed from git, never published | `~/workspaces/edamlabs/esteward` | — |
 
 Identity taxonomy: `README.md` § Identity. Only the repository name carries the dash (`e-serde`, `e-voice`); imports,

@@ -27,6 +27,6 @@ milestones it has reached.
 - Detached from the personal toolchain: the engine's public record no longer names it. The decision log
   speaks of "the personal toolchain" and "a private blueprint repository" where it named the repositories;
   the blueprint's pending work left `TODO.md` — it belongs to that repository's own plan, not to the
-  watcher's.
+  watcher's. Done in `TODO_detach`.
 - README: badge layout, description and identity line standardized on the e-serde template; the verdict ladder
   kept as its own table under the identity line. Done in `TODO_standardize_readme` across the fleet.

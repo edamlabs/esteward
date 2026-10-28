@@ -34,10 +34,9 @@ family = "infra"    # what it is
 | `family` | Is | Projects |
 | --- | --- | --- |
 | `eager` | the eager series: EDamLabs' own products, the `e-` line | e-serde, e-voice |
-| `binding` | a Python binding of a third-party engine, kept compatible with its upstream | etrafilatura, anytomd, gliner |
+| `binding` | a Python binding of a third-party engine, kept compatible with its upstream | rtrafilatura, anytomd, gliner |
 | `infra` | the organisation's own machinery | esteward |
 
-The `e` of a binding's name (etrafilatura) marks the EDamLabs build, not the eager series.
 
 ## Modules
 
@@ -74,7 +73,7 @@ Automation and insiders are never triaged. `author_association` cannot tell them
 One file per project, `fleet/<repo>.toml`:
 
 ```toml
-repo = "edamlabs/etrafilatura"
+repo = "edamlabs/rtrafilatura"
 kind = "lib"                       # lib (PyPI) | service (Docker)
 family = "binding"                 # eager | binding | infra
 modules = ["deps", "security", "drift"]
@@ -97,8 +96,8 @@ license = "Apache-2.0"             # a different license escalates
 
 ```bash
 make check                        # lint, types, import contracts, tests at 100 % coverage
-make run P=etrafilatura           # dry run with your gh token: verdicts on screen, nothing published
-uv run esteward run etrafilatura --act --release --publish   # what the fleet job does
+make run P=rtrafilatura           # dry run with your gh token: verdicts on screen, nothing published
+uv run esteward run rtrafilatura --act --release --publish   # what the fleet job does
 ```
 
 Decisions and their evidence: [`docs/decisions.md`](docs/decisions.md).

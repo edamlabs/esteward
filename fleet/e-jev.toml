@@ -1,0 +1,24 @@
+# Maintenance contract of edamlabs/e-jev (moved from damvolkov/e-jev on 2026-10-28).
+# security, docs and release stay off: the repo has no .github/ workflows, no docs site and its image is
+# still a private user package (ghcr.io/damvolkov/e-jev) — e-voice chose the same until its workflows existed.
+repo = "edamlabs/e-jev"
+kind = "service"
+family = "eager"
+modules = ["deps", "drift", "community"]
+
+[deps]
+lockfiles = ["uv.lock"]
+
+[[deps.watch]]
+name = "outlines"
+repo = "https://github.com/dottxt-ai/outlines"
+registry = "https://pypi.org/project/outlines/"
+license = "Apache-2.0"
+
+[[deps.watch]]
+name = "typesafe-sdk"
+registry = "https://pypi.org/project/typesafe-sdk/"
+license = "MIT"
+
+[docs]
+pages = false

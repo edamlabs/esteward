@@ -11,6 +11,10 @@ milestones it has reached.
 
 ### Added
 
+- Fleet: `e-jev` onboarded (`edamlabs/e-jev`, service · eager, moved from `damvolkov` on 2026-10-28) with
+  `deps`, `drift` and `community`; its manifest declares `[tool.edamlabs]` and `drift` reports ok.
+  `security`, `docs` and `release` stay off until the repo carries workflows and a docs site — its image is
+  still a private user package, `ghcr.io/damvolkov/e-jev`.
 - M5 · community (`TODO_community`): deterministic triage of a repository's open third-party issues and pull
   requests. A `community` label marks what the engine has seen, an issue with no body earns a request for the
   reproduction it lacks and the `needs-repro` label, idleness past `stale_days` earns the `stale` label and a
